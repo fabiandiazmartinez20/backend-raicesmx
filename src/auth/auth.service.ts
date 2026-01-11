@@ -9,13 +9,41 @@ import { RegisterDto } from './dto/register.dto';
 import { LoginDto } from './dto/login.dto';
 import * as bcrypt from 'bcrypt';
 
+/**
+ * Servicio de Autenticación
+ *
+ * Responsabilidades:
+ * - Registrar nuevos usuarios
+ * - Validar credenciales de login
+ * - Generar tokens JWT
+ * - Coordinar autenticación con UsersService
+ */
 @Injectable()
 export class AuthService {
   constructor(
+    /**
+     * Servicio de usuarios
+     * Utilizado para crear y buscar usuarios
+     */
     private usersService: UsersService,
+
+    /**
+     * Servicio JWT
+     * Utilizado para firmar tokens de acceso
+     */
     private jwtService: JwtService,
   ) {}
 
+  /**
+   * Registro de nuevos usuarios
+   *
+   * Flujo:
+   * 1. Verifica si el email ya existe
+   * 2. Crea el usuario
+   * 3. Genera un token JWT
+   *
+   * @param registerDto Datos de registro del usuario
+   */
   async register(registerDto: RegisterDto) {
     // Verifica si el usuario ya existe
     const existingUser = await this.usersService.findByEmail(registerDto.email);
@@ -32,12 +60,14 @@ export class AuthService {
       isSeller: registerDto.isSeller || false,
     });
 
-    // Genera el token
+    // Payload del token JWT
     const payload = {
       sub: user.id,
       email: user.email,
       isSeller: user.isSeller,
     };
+
+    // Genera el token
     const access_token = this.jwtService.sign(payload);
 
     return {
@@ -53,6 +83,16 @@ export class AuthService {
     };
   }
 
+  /**
+   * Login de usuario
+   *
+   * Flujo:
+   * 1. Busca usuario por email
+   * 2. Valida la contraseña con bcrypt
+   * 3. Genera token JWT
+   *
+   * @param loginDto Credenciales del usuario
+   */
   async login(loginDto: LoginDto) {
     // Busca el usuario
     const user = await this.usersService.findByEmail(loginDto.email);
@@ -71,12 +111,14 @@ export class AuthService {
       throw new UnauthorizedException('Email o contraseña incorrectos');
     }
 
-    // Genera el token
+    // Payload del token JWT
     const payload = {
       sub: user.id,
       email: user.email,
       isSeller: user.isSeller,
     };
+
+    // Genera el token
     const access_token = this.jwtService.sign(payload);
 
     return {
@@ -92,6 +134,14 @@ export class AuthService {
     };
   }
 
+  /**
+   * Validación de usuario
+   *
+   * Usado principalmente por estrategias de Passport
+   * para obtener el usuario a partir del ID
+   *
+   * @param userId ID del usuario autenticado
+   */
   async validateUser(userId: number) {
     return await this.usersService.findOne(userId);
   }
