@@ -1,3 +1,4 @@
+// src/auth/auth.controller.ts
 import {
   Controller,
   Post,
@@ -5,7 +6,10 @@ import {
   Get,
   UseGuards,
   Request,
+  Response,
+  Res, // ← Agregar este import
 } from '@nestjs/common';
+import type { Response as ExpressResponse } from 'express'; // ← Esta línea debe estar
 import { AuthService } from './auth.service';
 import { RegisterDto } from './dto/register.dto';
 import { LoginDto } from './dto/login.dto';
@@ -24,7 +28,7 @@ export class AuthController {
   constructor(
     /**
      * Servicio de autenticación
-     * Contiene la lógica de negocio (login, register, JWT)
+     * Contiene la lógica de negocio (login, register, JWT, cookies)
      */
     private readonly authService: AuthService,
   ) {}
@@ -33,36 +37,35 @@ export class AuthController {
    * Registro de usuario
    *
    * Endpoint público que permite crear un nuevo usuario
-   * y devuelve un token JWT de acceso.
-   *
-   * @param registerDto Datos necesarios para el registro
+   * y establece automáticamente una cookie HTTP-Only con el token JWT.
    */
   @Post('register')
-  async register(@Body() registerDto: RegisterDto) {
-    return await this.authService.register(registerDto);
+  async register(
+    @Body() registerDto: RegisterDto,
+    @Res({ passthrough: true }) response: ExpressResponse, // ← Cambiar @Response por @Res
+  ) {
+    return await this.authService.register(registerDto, response);
   }
 
   /**
    * Login de usuario
    *
    * Endpoint público que valida credenciales
-   * y devuelve un token JWT si son correctas.
-   *
-   * @param loginDto Credenciales del usuario
+   * y establece una cookie HTTP-Only con el token JWT si son correctas.
    */
   @Post('login')
-  async login(@Body() loginDto: LoginDto) {
-    return await this.authService.login(loginDto);
+  async login(
+    @Body() loginDto: LoginDto,
+    @Res({ passthrough: true }) response: ExpressResponse, // ← Cambiar @Response por @Res
+  ) {
+    return await this.authService.login(loginDto, response);
   }
 
   /**
    * Obtener perfil del usuario autenticado
    *
    * Endpoint protegido por JWT.
-   * Devuelve la información del usuario extraída del token.
-   *
-   * Requiere header:
-   * Authorization: Bearer <token>
+   * Devuelve la información del usuario extraída del token en la cookie.
    */
   @UseGuards(JwtAuthGuard)
   @Get('profile')
@@ -77,16 +80,13 @@ export class AuthController {
   /**
    * Logout de usuario
    *
-   * Endpoint protegido.
-   * En sistemas JWT el logout es principalmente
-   * una acción lógica del frontend (eliminar token).
+   * Endpoint protegido que elimina la cookie HTTP-Only
+   * cerrando efectivamente la sesión del usuario.
    */
   @UseGuards(JwtAuthGuard)
   @Post('logout')
-  logout() {
-    return {
-      success: true,
-      message: 'Sesión cerrada correctamente. ¡Hasta pronto!',
-    };
+  logout(@Res({ passthrough: true }) response: ExpressResponse) {
+    // ← Cambiar @Response por @Res
+    return this.authService.logout(response);
   }
 }

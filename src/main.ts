@@ -1,6 +1,7 @@
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
 import { ValidationPipe } from '@nestjs/common';
+import cookieParser from 'cookie-parser';
 
 /**
  * Punto de entrada de la aplicación NestJS
@@ -10,6 +11,8 @@ import { ValidationPipe } from '@nestjs/common';
  * - Configurar pipes globales de validación
  * - Habilitar CORS
  * - Levantar el servidor HTTP
+ * - Cookies parser para HTTP-Only cookies
+
  *
  * Este archivo define el comportamiento global
  * antes de que los módulos de la aplicación entren en acción.
@@ -20,6 +23,12 @@ async function bootstrap() {
    * usando el módulo raíz (AppModule)
    */
   const app = await NestFactory.create(AppModule);
+
+  /**
+   * Middleware para parsear cookies
+   * Necesario para leer cookies HTTP-Only desde las peticiones
+   */
+  app.use(cookieParser());
 
   /**
    * Pipe de validación global
@@ -42,11 +51,14 @@ async function bootstrap() {
    *
    * Permite que el frontend Angular (localhost:4200)
    * consuma la API con credenciales (cookies / auth headers)
+   *  credentials: true → Permite envío de cookies cross-origin
+
    */
   app.enableCors({
     origin: ['http://localhost:4200'],
     methods: 'GET,POST,PUT,DELETE,PATCH',
     credentials: true,
+    exposedHeaders: ['set-cookie'],
   });
 
   /**
