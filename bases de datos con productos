@@ -1,0 +1,45 @@
+tecnologias: 
+leaflet, maptiler con:  // 1. México API → siempre confiable para colonias, estado y municipio
+    const mexicoRes = await fetch(
+      `https://mexico-api.devaleff.com/api/codigo-postal/${cp}`,
+    );
+    const mexicoJson = await mexicoRes.json();
+
+    if (!mexicoJson?.data?.length) {
+      throw new NotFoundException('Código postal no encontrado');
+    }
+
+    const info = mexicoJson.data[0];
+    const municipio = info.D_mnpio || info.d_mnpio;
+    const estado = info.d_estado;
+
+    // 2. Intentamos Nominatim (rápido si responde)
+    let lat = 23.6345;
+    let lng = -102.5528;
+
+    try {
+      const query = `${info.d_asenta}, ${municipio}, ${estado}, México`;
+      const nominatimRes = await Promise.race([
+        fetch(
+          `https://nominatim.openstreetmap.org/search?format=json&limit=1&countrycodes=mx&q=${encodeURIComponent(query)}`,
+          {
+            headers: { 'User-Agent': 'RaicezMexico/1.0 (+https://raicez.mx)' },
+          },
+        ),
+        new Promise((_, reject) =>
+          setTimeout(() => reject(new Error('timeout')), 3500),
+        ),
+      ]);
+
+      const data = await (nominatimRes as Response).json();
+      if (data[0]?.lat && data[0]?.lon) {
+        lat = parseFloat(data[0].lat);
+        lng = parseFloat(data[0].lon);
+        console.log('Nominatim dio coordenadas →', lat, lng);
+      } else {
+        throw new Error('Sin coordenadas');
+      }
+    } catch (error) {
+      console.log(
+        'Nominatim falló o fue lento → usando coordenadas reales del municipio',
+      );

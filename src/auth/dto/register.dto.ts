@@ -6,6 +6,7 @@ import {
   IsBoolean,
   IsOptional,
 } from 'class-validator';
+import { Sanitize } from '../decorators/sanitize.decorator';
 
 /**
  * RegisterDto
@@ -29,6 +30,7 @@ export class RegisterDto {
    * Correo electrónico del usuario.
    * Debe ser único dentro del sistema.
    */
+  @Sanitize()
   @IsEmail()
   @IsNotEmpty()
   email: string;
@@ -36,6 +38,7 @@ export class RegisterDto {
   /**
    * Nombre completo del usuario.
    */
+  @Sanitize()
   @IsString()
   @IsNotEmpty()
   fullName: string;

@@ -1,71 +1,107 @@
+// src/main.ts
 import { NestFactory } from '@nestjs/core';
-import { AppModule } from './app.module';
 import { ValidationPipe } from '@nestjs/common';
+import { AppModule } from './app.module';
 import cookieParser from 'cookie-parser';
+import helmet from 'helmet';
 
 /**
- * Punto de entrada de la aplicación NestJS
+ * Función de arranque con protecciones de seguridad
  *
- * Responsabilidades:
- * - Inicializar la aplicación
- * - Configurar pipes globales de validación
- * - Habilitar CORS
- * - Levantar el servidor HTTP
- * - Cookies parser para HTTP-Only cookies
-
- *
- * Este archivo define el comportamiento global
- * antes de que los módulos de la aplicación entren en acción.
+ * Protecciones implementadas:
+ * - Helmet: Headers de seguridad HTTP
+ * - Cookie Parser: Manejo de cookies HTTP-Only
+ * - CORS: Credenciales habilitadas para cookies
+ * - Validation Pipe: Sanitización y validación de DTOs
  */
 async function bootstrap() {
-  /**
-   * Crea la instancia principal de la aplicación
-   * usando el módulo raíz (AppModule)
-   */
   const app = await NestFactory.create(AppModule);
 
   /**
-   * Middleware para parsear cookies
+   * Helmet: Establece headers de seguridad HTTP
+   *
+   * Protege contra:
+   * - Clickjacking (X-Frame-Options)
+   * - MIME type sniffing (X-Content-Type-Options)
+   * - XSS básico (X-XSS-Protection)
+   * - Información del servidor (elimina X-Powered-By)
+   *
+   * Documentación: https://helmetjs.github.io/
+   */
+  app.use(
+    helmet({
+      contentSecurityPolicy: {
+        directives: {
+          defaultSrc: ["'self'"],
+          scriptSrc: ["'self'"],
+          styleSrc: ["'self'", "'unsafe-inline'"], // Permite estilos inline
+          imgSrc: ["'self'", 'data:', 'https:'],
+          connectSrc: [
+            "'self'",
+            'http://localhost:3000',
+            'http://localhost:4200',
+          ],
+          fontSrc: ["'self'"],
+          objectSrc: ["'none'"],
+          mediaSrc: ["'self'"],
+          frameSrc: ["'none'"],
+        },
+      },
+      crossOriginEmbedderPolicy: false, // Necesario para desarrollo
+    }),
+  );
+
+  /**
+   * Cookie Parser: Middleware para parsear cookies
    * Necesario para leer cookies HTTP-Only desde las peticiones
    */
   app.use(cookieParser());
 
   /**
-   * Pipe de validación global
+   * CORS: Configuración de Cross-Origin Resource Sharing
    *
-   * Configuración:
-   * - whitelist: elimina propiedades no definidas en los DTOs
-   * - forbidNonWhitelisted: lanza error si llegan propiedades extra
-   * - transform: transforma payloads a instancias de clases DTO
-   */
-  app.useGlobalPipes(
-    new ValidationPipe({
-      whitelist: true,
-      forbidNonWhitelisted: true,
-      transform: true,
-    }),
-  );
-
-  /**
-   * Configuración global de CORS
-   *
-   * Permite que el frontend Angular (localhost:4200)
-   * consuma la API con credenciales (cookies / auth headers)
-   *  credentials: true → Permite envío de cookies cross-origin
-
+   * - origin: URL del frontend Angular
+   * - credentials: true → Permite envío de cookies cross-origin
+   * - exposedHeaders: Permite que el frontend lea el header Set-Cookie
    */
   app.enableCors({
-    origin: ['http://localhost:4200'],
-    methods: 'GET,POST,PUT,DELETE,PATCH',
-    credentials: true,
+    origin: 'http://localhost:4200',
+    credentials: true, // MUY IMPORTANTE para HTTP-Only cookies
     exposedHeaders: ['set-cookie'],
   });
 
   /**
-   * Inicia el servidor en el puerto definido
-   * por variable de entorno o puerto 3000 por defecto
+   * Validation Pipe Global
+   *
+   * Configuración de seguridad:
+   * - whitelist: Remueve propiedades no definidas en el DTO
+   * - forbidNonWhitelisted: Rechaza peticiones con propiedades extras
+   * - transform: Convierte y sanitiza automáticamente
+   * - disableErrorMessages: false en dev, true en producción
+   *
+   * Esto trabaja junto con los decoradores @Sanitize() en los DTOs
+   * para proporcionar múltiples capas de protección XSS
    */
-  await app.listen(process.env.PORT ?? 3000);
-}
+  app.useGlobalPipes(
+    new ValidationPipe({
+      whitelist: true, // Remueve propiedades no definidas
+      forbidNonWhitelisted: true, // Lanza error si hay propiedades extras
+      transform: true, // Transforma y sanitiza automáticamente
+      transformOptions: {
+        enableImplicitConversion: true,
+      },
+      // En producción, puedes ocultar detalles de validación:
+      // disableErrorMessages: process.env.NODE_ENV === 'production',
+    }),
+  );
 
+  await app.listen(3000);
+  console.log(
+    'Servidor corriendo con protecciones de seguridad en http://localhost:3000',
+  );
+  console.log(' Helmet activado');
+  console.log('Cookies HTTP-Only habilitadas');
+  console.log('CORS configurado para http://localhost:4200');
+  console.log('Validación y sanitización global activas');
+}
 bootstrap();
