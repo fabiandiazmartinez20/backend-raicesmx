@@ -94,7 +94,7 @@ src/
 │   │   └── register.dto.ts
 |   |   └── register.dto.ts
 |   |
-|   |──service/
+|   |──services/
 |   |  ├──password-reset.dto.ts
 │   │
 |   |──entities/
@@ -655,7 +655,7 @@ export class User {
 - [x] Helmet para headers de seguridad
 - [x] CORS configurado
 - [x] Base de datos en Railway
-- [x] recuperacion de contraseña mediante envio de correos con resend
+- [x] recuperacion de contraseña mediante envio de correos con bravo
 
 ### 📋 Fase 2: Módulo de Productos (PRÓXIMO)
 
