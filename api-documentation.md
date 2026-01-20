@@ -108,13 +108,46 @@ src/
 │       └── jwt.strategy.ts          # Estrategia JWT
 │       └── google.strategy.ts
 └── users/                     # Módulo de Usuarios
-    ├── users.module.ts
-    ├── users.controller.ts
-    ├── users.service.ts
-    ├── dto/
-    │   └── create-user.dto.ts
-    └── entities/
-        └── user.entity.ts
+|    ├── users.module.ts
+|    ├── users.controller.ts
+|    ├── users.service.ts
+|    ├── dto/
+|    │   └── create-user.dto.ts
+|    └── entities/
+|        └── user.entity.ts|    │
+├── admin/                     # Módulo de Administradores ← NUEVO
+│   ├── admin.module.ts
+│   ├── admin.controller.ts
+│   ├── admin.service.ts
+│   ├── dto/
+│   │   ├── admin-login.dto.ts
+│   │   ├── create-admin.dto.ts
+│   │   └── update-admin.dto.ts
+│   ├── entities/
+│   │   └── admin.entity.ts
+│   ├── guards/
+│   │   ├── admin-jwt.guard.ts        # Protección rutas admin
+│   │   └── super-admin.guard.ts      # Solo super admins
+│   └── strategies/
+│       └── admin-jwt.strategy.ts     # Estrategia JWT admin
+│
+├── seller-requests/           # Módulo de Solicitudes de Vendedor ← NUEVO
+│   ├── seller-requests.module.ts
+│   ├── seller-requests.controller.ts
+│   ├── seller-requests.service.ts
+│   ├── dto/
+│   │   ├── create-seller-request.dto.ts
+│   │   ├── review-seller-request.dto.ts
+│   │   └── get-seller-requests.dto.ts
+│   └── entities/
+│       └── seller-request.entity.ts
+│
+├── common/                    # Servicios compartidos ← NUEVO
+│   └── services/
+│       └── cloudinary.service.ts     # Subida de imágenes
+│
+└── scripts/                   # Scripts utilitarios ← NUEVO
+    └── create-admin.js               # Crear admin inicial
 ```
 
 ### Patrón de Diseño
@@ -384,7 +417,7 @@ Obtiene un usuario por ID
 
 ---
 
-### 4. EmailService (Resend)
+### 4. EmailService (brevo)
 
 **Descripción:** Servicio para envío de emails transaccionales con Resend
 
@@ -409,6 +442,62 @@ RESEND_FROM_EMAIL=onboarding@resend.dev
 ```
 
 ---
+
+---
+
+### 5. AdminModule
+
+**Descripción:** Gestión de administradores del sistema
+
+**Características:**
+
+- Autenticación separada de usuarios (cookie: admin_token)
+- Roles: super_admin y admin
+- Dashboard con estadísticas
+- Gestión de solicitudes de vendedor
+- CRUD de administradores (solo super_admin)
+
+**Guards:**
+
+- `AdminJwtGuard` - Valida token de admin
+- `SuperAdminGuard` - Solo super administradores
+
+---
+
+### 6. SellerRequestsModule
+
+**Descripción:** Sistema de verificación de vendedores
+
+**Flujo:**
+
+1. Usuario envía solicitud (CURP + INE)
+2. Imágenes se suben a Cloudinary (WebP, 80% calidad)
+3. Solicitud queda pendiente
+4. Admin revisa documentos
+5. Admin aprueba → `user.isSeller = true`
+6. Usuario puede publicar productos
+
+---
+
+### 7. CloudinaryService
+
+**Descripción:** Servicio para subida de imágenes a Cloudinary
+
+**Características:**
+
+- Conversión automática a WebP
+- Optimización de calidad (80%)
+- Redimensionamiento máximo 1200x1200
+- Eliminación de imágenes antiguas
+- Organización en carpetas
+
+**Configuración:**
+
+```env
+CLOUDINARY_CLOUD_NAME=tu_cloud_name
+CLOUDINARY_API_KEY=123456789
+CLOUDINARY_API_SECRET=xxxxxxxxxxxxxxx
+```
 
 ## 🔐 Seguridad
 
@@ -611,6 +700,76 @@ CREATE TABLE password_reset_codes (
 - `idx_user_code` - Optimiza búsquedas por usuario y código
 - `idx_expires` - Optimiza limpieza de códigos expirados
 
+---
+
+#### Tabla: `admins`
+
+```sql
+CREATE TABLE admins (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  email VARCHAR(255) UNIQUE NOT NULL,
+  password_hash VARCHAR(255) NOT NULL,
+  full_name VARCHAR(255) NOT NULL,
+  role ENUM('super_admin', 'admin') DEFAULT 'admin',
+  is_active BOOLEAN DEFAULT TRUE,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+
+  INDEX idx_email (email),
+  INDEX idx_active (is_active)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+```
+
+**Campos:**
+
+- `id` - Identificador único
+- `email` - Email del administrador (único)
+- `password_hash` - Contraseña hasheada
+- `full_name` - Nombre completo
+- `role` - Rol: super_admin (todos los permisos) o admin
+- `is_active` - Estado de la cuenta
+
+---
+
+#### Tabla: `seller_requests`
+
+```sql
+CREATE TABLE seller_requests (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  user_id INT NOT NULL,
+  curp VARCHAR(18) NOT NULL,
+  ine_front_url VARCHAR(500) NOT NULL,
+  ine_back_url VARCHAR(500),
+  ine_front_public_id VARCHAR(255) NOT NULL,
+  ine_back_public_id VARCHAR(255),
+  status ENUM('pending', 'approved', 'rejected') DEFAULT 'pending',
+  rejection_reason TEXT,
+  reviewed_by INT,
+  reviewed_at TIMESTAMP NULL,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+
+  FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+  FOREIGN KEY (reviewed_by) REFERENCES admins(id) ON DELETE SET NULL,
+
+  INDEX idx_user_id (user_id),
+  INDEX idx_status (status)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+```
+
+**Campos:**
+
+- `user_id` - ID del usuario que solicita
+- `curp` - CURP del solicitante
+- `ine_front_url` - URL de imagen en Cloudinary (frontal)
+- `ine_back_url` - URL de imagen en Cloudinary (reverso)
+- `ine_front_public_id` - ID de Cloudinary para eliminar
+- `ine_back_public_id` - ID de Cloudinary para eliminar
+- `status` - Estado: pending, approved, rejected
+- `rejection_reason` - Razón si fue rechazada
+- `reviewed_by` - ID del admin que revisó
+- `reviewed_at` - Fecha de revisión
+
 ### Entidad TypeORM
 
 ```typescript
@@ -656,6 +815,34 @@ export class User {
 - [x] CORS configurado
 - [x] Base de datos en Railway
 - [x] recuperacion de contraseña mediante envio de correos con bravo
+
+### ✅ Fase 1.5: Sistema de Verificación de Vendedores (COMPLETADO)
+
+- [x] **Backend completo de verificación**
+  - AdminModule con autenticación separada
+  - SellerRequestsModule para gestión de solicitudes
+  - CloudinaryService para subida de imágenes en WebP
+  - Guards de admin (AdminJwtGuard, SuperAdminGuard)
+  - Script para crear administrador inicial
+
+- [x] **Sistema de solicitudes**
+  - Formulario de solicitud (CURP + INE)
+  - Subida de imágenes a Cloudinary (conversión WebP)
+  - Estados: pending, approved, rejected
+  - Validación de documentos
+  - Cookies separadas (admin_token vs access_token)
+
+- [x] **Base de datos**
+  - Tabla `admins` con roles (super_admin, admin)
+  - Tabla `seller_requests` con documentos
+  - Relaciones con usuarios
+
+- [ ] **Panel de administrador (Frontend)** → SIGUIENTE
+  - Dashboard con estadísticas
+  - Lista de solicitudes pendientes
+  - Aprobar/rechazar con razón
+  - Ver documentos del solicitante
+  - Gestión de usuarios
 
 ### 📋 Fase 2: Módulo de Productos (PRÓXIMO)
 
@@ -729,18 +916,34 @@ export class User {
 
 ---
 
+### 📋 Fase pendiente: Panel de Administrador (EN DESARROLLO)
+
+- [ ] **Frontend del panel admin**
+  - Login de admin
+  - Dashboard con estadísticas
+  - Lista de solicitudes pendientes
+  - Visualización de documentos (INE)
+  - Aprobar/rechazar con razón
+  - Gestión de usuarios
+  - CRUD de administradores (super_admin)
+
+- [ ] **Mejoras al sistema de solicitudes**
+  - Notificaciones por email al aprobar/rechazar
+  - Historial de solicitudes
+  - Filtros avanzados
+
 ## Métricas Actuales
 
 ### Cobertura de Código
 
 - **Controladores:** 3
-- **Entidades:** 1
-- **Guards:** 2
+- **Entidades:** 4(user, passwordresetcode, admin, sellerrequest)
+- **Guards:** 5
 - **DTOs:** 3
 - **Decoradores:** 2
-- **Archivos:** 25
-- **Módulos:** 3
-- **Servicios:** 6
+- **Archivos:** 35
+- **Módulos:** 5 (users, auth, admin, sellerrequest, common)
+- **Servicios:** 8
 - **Endpoints Activos:** 10 (3 públicos + 7 protegidos)
 
 ### Endpoints Activos
@@ -767,6 +970,30 @@ JWT_EXPIRATION=7d
 # Entorno
 NODE_ENV=development
 ```
+
+# Google OAuth
+
+GOOGLE_CLIENT_ID=
+GOOGLE_CLIENT_SECRET=
+GOOGLE_CALLBACK_URL=http://localhost:3000/auth/google/callback
+
+# Frontend URL (para redirección)
+
+FRONTEND_URL=http://localhost:4200
+
+# O tu dominio verificado: noreply@raicesmx.com
+
+# Por estas de Brevo:
+
+BREVO_API_KEY=
+BREVO_FROM_EMAIL=fabianquinnz16@gmail.com
+BREVO_FROM_NAME=RaícesMX
+
+# clouinary
+
+CLOUDINARY_CLOUD_NAME=du74htavm
+CLOUDINARY_API_KEY=227994212893761
+CLOUDINARY_API_SECRET=3U6qhi3My-a1ujjFrV1EiaLyWHw
 
 ---
 
@@ -910,3 +1137,153 @@ Restablece la contraseña del usuario
 ```
 
 ```
+
+---
+
+### Endpoints de Administrador
+
+#### POST `/admin/login` 🔐
+
+Login de administradores (cookie separada: admin_token)
+
+**Request Body:**
+
+```typescript
+{
+  email: string;
+  password: string;
+}
+```
+
+**Response (200):**
+
+```typescript
+{
+  success: true,
+  message: "¡Bienvenido, Administrador Principal!",
+  admin: {
+    id: number,
+    email: string,
+    fullName: string,
+    role: "super_admin" | "admin"
+  }
+}
+```
+
+---
+
+#### GET `/admin/dashboard/stats` 🛡️
+
+Estadísticas del dashboard (requiere AdminJwtGuard)
+
+**Response (200):**
+
+```typescript
+{
+  success: true,
+  stats: {
+    totalUsers: number,
+    totalSellers: number,
+    totalBuyers: number,
+    pendingRequests: number,
+    approvedRequests: number,
+    rejectedRequests: number,
+    totalRequests: number
+  }
+}
+```
+
+---
+
+#### GET `/admin/users` 🛡️
+
+Lista todos los usuarios registrados
+
+---
+
+### Endpoints de Solicitudes de Vendedor
+
+#### POST `/seller-requests` 🔐
+
+Crear solicitud de vendedor (con imágenes)
+
+**Request Body (multipart/form-data):**
+
+```typescript
+{
+  curp: string;              // CURP de 18 caracteres
+  ineFront: File;            // Imagen frontal INE (requerida)
+  ineBack?: File;            // Imagen trasera INE (opcional)
+}
+```
+
+**Response (201):**
+
+```typescript
+{
+  success: true,
+  message: "Solicitud enviada exitosamente. Recibirás una respuesta pronto.",
+  request: {
+    id: number,
+    status: "pending",
+    createdAt: Date
+  }
+}
+```
+
+**Características:**
+
+- Sube imágenes a Cloudinary automáticamente
+- Convierte a WebP con calidad 80%
+- Máximo 5MB por imagen
+- Solo 1 solicitud pendiente por usuario
+
+---
+
+#### GET `/seller-requests/me` 🔐
+
+Obtiene la solicitud del usuario actual
+
+**Response (200):**
+
+```typescript
+{
+  success: true,
+  hasRequest: boolean,
+  request: {
+    id: number,
+    status: "pending" | "approved" | "rejected",
+    curp: string,
+    createdAt: Date,
+    reviewedAt?: Date,
+    rejectionReason?: string
+  }
+}
+```
+
+---
+
+#### GET `/seller-requests?status=pending` 🛡️
+
+Lista solicitudes (solo admin)
+
+**Query Params:**
+
+- `status`: "pending" | "approved" | "rejected" | "all"
+
+---
+
+#### PATCH `/seller-requests/:id/review` 🛡️
+
+Aprobar o rechazar solicitud (solo admin)
+
+**Request Body:**
+
+```typescript
+{
+  status: "approved" | "rejected",
+  rejectionReason?: string  // Requerido si status = "rejected"
+}
+```
+
+**Acción:** Si aprobada, `user.isSeller = true`

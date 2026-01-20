@@ -5,6 +5,8 @@ import { AppService } from './app.service';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { UsersModule } from './users/users.module';
 import { AuthModule } from './auth/auth.module';
+import { AdminModule } from './admin/admin.module';
+import { SellerRequestsModule } from './seller-request/seller-requests.module';
 
 /**
  * Módulo raíz de la aplicación
@@ -72,6 +74,8 @@ import { AuthModule } from './auth/auth.module';
      * Encapsula JWT, guards, strategies y login
      */
     AuthModule,
+    SellerRequestsModule,
+    AdminModule,
   ],
 
   /**

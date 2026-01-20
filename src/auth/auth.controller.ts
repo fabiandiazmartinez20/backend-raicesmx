@@ -83,6 +83,8 @@ export class AuthController {
   @UseGuards(JwtAuthGuard)
   @Get('profile')
   getProfile(@Request() req) {
+    console.log('🔍 req.user completo:', req.user); // ← AGREGAR ESTO
+
     return {
       success: true,
       message: 'Perfil obtenido correctamente',
