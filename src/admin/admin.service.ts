@@ -59,7 +59,10 @@ export class AdminService {
       sub: admin.id,
       email: admin.email,
       role: admin.role,
-      isAdmin: true, // ← Flag para diferenciar de usuarios normales
+      isAdmin: true,
+      isActive: admin.isActive, // ✅ AQUÍ
+
+      // ← Flag para diferenciar de usuarios normales
     };
 
     const access_token = this.jwtService.sign(payload);
@@ -81,6 +84,7 @@ export class AdminService {
         email: admin.email,
         fullName: admin.fullName,
         role: admin.role,
+        isActive: admin.isActive, // ✅ AQUÍ
       },
     };
   }

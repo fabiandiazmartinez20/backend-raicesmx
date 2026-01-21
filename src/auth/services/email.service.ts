@@ -238,7 +238,7 @@ export class EmailService {
     </div>
     
     <div class="footer">
-      <p>© ${new Date().getFullYear()} RaícesMX - Marketplace Artesanal Mexicano</p>
+      <p>© ${new Date().getFullYear()} RaícesMX - Marketplace Mexicano</p>
       <p>Este es un email automático, por favor no respondas a este mensaje.</p>
     </div>
   </div>
