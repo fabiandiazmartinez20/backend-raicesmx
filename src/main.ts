@@ -37,6 +37,22 @@ async function bootstrap() {
    * Content Security Policy (CSP):
    * Define desde qué orígenes se pueden cargar recursos.
    */
+  app.enableCors({
+    origin: (origin, callback) => {
+      /**
+       * Si no hay origin (por ejemplo Postman)
+       * o el origin está en la whitelist, se permite.
+       */
+      if (!origin || allowedOrigins.includes(origin)) {
+        callback(null, true);
+      } else {
+        callback(new Error('Origen no permitido por CORS'));
+      }
+    },
+    credentials: true, // Necesario para cookies HTTP-Only
+    exposedHeaders: ['set-cookie'],
+  });
+
   app.use(
     helmet({
       contentSecurityPolicy: {
@@ -97,22 +113,6 @@ async function bootstrap() {
     'http://localhost:4200', // Angular en desarrollo
     'https://tu-frontend.pages.dev', // Frontend en producción
   ];
-
-  app.enableCors({
-    origin: (origin, callback) => {
-      /**
-       * Si no hay origin (por ejemplo Postman)
-       * o el origin está en la whitelist, se permite.
-       */
-      if (!origin || allowedOrigins.includes(origin)) {
-        callback(null, true);
-      } else {
-        callback(new Error('Origen no permitido por CORS'));
-      }
-    },
-    credentials: true, // Necesario para cookies HTTP-Only
-    exposedHeaders: ['set-cookie'],
-  });
 
   /**
    * =========================
