@@ -12,6 +12,7 @@ import { User } from '../users/entities/user.entity';
 import { CloudinaryService } from '../common/services/cloudinary.service';
 import { CreateSellerRequestDto } from './dto/create-seller-request.dto';
 import { ReviewSellerRequestDto } from './dto/review-seller-requests.dto';
+import { EmailService } from 'src/auth/services/email.service';
 
 @Injectable()
 export class SellerRequestsService {
@@ -21,6 +22,7 @@ export class SellerRequestsService {
     @InjectRepository(User)
     private userRepository: Repository<User>,
     private cloudinaryService: CloudinaryService,
+    private emailService: EmailService, // ✨ INYECTAR
   ) {}
 
   /**
@@ -163,6 +165,9 @@ export class SellerRequestsService {
   /**
    * Aprobar o rechazar solicitud (solo admin)
    */
+  /**
+   * Aprobar o rechazar solicitud (solo admin)
+   */
   async review(
     requestId: number,
     adminId: number,
@@ -170,7 +175,7 @@ export class SellerRequestsService {
   ) {
     const request = await this.sellerRequestRepository.findOne({
       where: { id: requestId },
-      relations: ['user'],
+      relations: ['user'], // 👈 IMPORTANTE
     });
 
     if (!request) {
@@ -181,7 +186,7 @@ export class SellerRequestsService {
       throw new BadRequestException('Esta solicitud ya fue revisada');
     }
 
-    // Actualizar estado de la solicitud
+    // Actualizar estado
     request.status = dto.status;
     request.reviewedBy = adminId;
     request.reviewedAt = new Date();
@@ -192,11 +197,38 @@ export class SellerRequestsService {
 
     await this.sellerRequestRepository.save(request);
 
-    // Si fue aprobada, activar cuenta de vendedor
+    // ===============================
+    // ✅ SI ES APROBADO
+    // ===============================
     if (dto.status === 'approved') {
       await this.userRepository.update(
         { id: request.userId },
         { isSeller: true },
+      );
+
+      // 📧 ENVIAR EMAIL DE APROBACIÓN
+      await this.emailService.sendSellerApprovalEmail(
+        request.user.email,
+        request.user.fullName,
+      );
+
+      console.log(
+        `✅ Solicitud aprobada. Email enviado a: ${request.user.email}`,
+      );
+    }
+
+    // ===============================
+    // ❌ SI ES RECHAZADO
+    // ===============================
+    if (dto.status === 'rejected') {
+      await this.emailService.sendSellerRejectionEmail(
+        request.user.email,
+        request.user.fullName,
+        dto.rejectionReason || 'No especificado',
+      );
+
+      console.log(
+        `❌ Solicitud rechazada. Email enviado a: ${request.user.email}`,
       );
     }
 

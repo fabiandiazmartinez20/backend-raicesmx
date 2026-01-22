@@ -16,10 +16,12 @@ import {
 import { FileFieldsInterceptor } from '@nestjs/platform-express';
 import { SellerRequestsService } from './seller-requests.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import { AdminJwtGuard } from '../admin/guards/admin-jwt.guard';
 import { GetUser } from '../auth/decorators/get-user.decorator';
 import { CreateSellerRequestDto } from './dto/create-seller-request.dto';
 import { ReviewSellerRequestDto } from './dto/review-seller-requests.dto';
 import { GetSellerRequestsDto } from './dto/get-seller-requests.dto';
+
 @Controller('seller-requests')
 export class SellerRequestsController {
   constructor(private readonly sellerRequestsService: SellerRequestsService) {}
@@ -45,8 +47,8 @@ export class SellerRequestsController {
       ineBack?: Express.Multer.File[];
     },
   ) {
-    // Validar que se subió la imagen frontal
-    if (!files.ineFront || files.ineFront.length === 0) {
+    // ✨ Validar que se subió la imagen frontal
+    if (!files || !files.ineFront || files.ineFront.length === 0) {
       throw new BadRequestException('La imagen frontal del INE es requerida');
     }
 
@@ -60,7 +62,10 @@ export class SellerRequestsController {
       );
     }
 
-    const ineBack = files.ineBack?.[0];
+    // ✨ Validar imagen trasera si existe
+    const ineBack =
+      files.ineBack && files.ineBack.length > 0 ? files.ineBack[0] : undefined;
+
     if (ineBack && !allowedTypes.includes(ineBack.mimetype)) {
       throw new BadRequestException(
         'Solo se permiten imágenes (JPEG, PNG, WebP)',
@@ -93,10 +98,9 @@ export class SellerRequestsController {
   /**
    * GET /seller-requests
    * Listar todas las solicitudes (solo admin)
-   * TODO: Agregar AdminGuard
    */
   @Get()
-  @UseGuards(JwtAuthGuard) // TODO: Cambiar por AdminGuard
+  @UseGuards(AdminJwtGuard)
   async findAll(@Query() query: GetSellerRequestsDto) {
     return this.sellerRequestsService.findAll(query.status);
   }
@@ -104,25 +108,24 @@ export class SellerRequestsController {
   /**
    * PATCH /seller-requests/:id/review
    * Aprobar o rechazar solicitud (solo admin)
-   * TODO: Agregar AdminGuard
    */
   @Patch(':id/review')
-  @UseGuards(JwtAuthGuard) // TODO: Cambiar por AdminGuard
+  @UseGuards(AdminJwtGuard)
   async review(
     @Param('id') id: string,
     @GetUser() admin: any,
     @Body() dto: ReviewSellerRequestDto,
   ) {
+    console.log('🔍 Admin que revisa:', admin);
     return this.sellerRequestsService.review(+id, admin.id, dto);
   }
 
   /**
    * DELETE /seller-requests/:id
    * Eliminar solicitud (solo admin)
-   * TODO: Agregar AdminGuard
    */
   @Delete(':id')
-  @UseGuards(JwtAuthGuard) // TODO: Cambiar por AdminGuard
+  @UseGuards(AdminJwtGuard)
   async delete(@Param('id') id: string) {
     return this.sellerRequestsService.delete(+id);
   }

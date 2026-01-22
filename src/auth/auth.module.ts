@@ -98,6 +98,6 @@ import { UsersModule } from '../users/users.module';
   /**
    * Servicios exportados para otros módulos
    */
-  exports: [AuthService],
+  exports: [AuthService, EmailService],
 })
 export class AuthModule {}
