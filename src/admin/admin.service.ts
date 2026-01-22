@@ -70,8 +70,8 @@ export class AdminService {
     // Cookie separada: admin_token
     response.cookie('admin_token', access_token, {
       httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'lax',
+      secure: true, // 🔥 Forzado en producción
+      sameSite: 'none', // 🔥 Cross-domain
       maxAge: 7 * 24 * 60 * 60 * 1000,
       path: '/',
     });
@@ -180,8 +180,8 @@ export class AdminService {
   async logout(response: Response) {
     response.clearCookie('admin_token', {
       httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'lax',
+      secure: true,
+      sameSite: 'none',
       path: '/',
     });
 
