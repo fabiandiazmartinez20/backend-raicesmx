@@ -14,22 +14,18 @@ async function bootstrap() {
 
   const app = await NestFactory.create(AppModule);
 
-  // ✅ CORS BIEN CONFIGURADO
   app.enableCors({
     origin: (origin, callback) => {
-      if (!origin) {
-        return callback(null, true); // Postman / Server
-      }
+      if (!origin) return callback(null, true);
 
       if (allowedOrigins.includes(origin)) {
         return callback(null, true);
       }
 
-      console.log('❌ Bloqueado por CORS:', origin);
-      return callback(new Error('Origen no permitido por CORS'));
+      console.error('❌ CORS bloqueado:', origin);
+      return callback(new Error('Origen no permitido por CORS'), false);
     },
     credentials: true,
-    methods: 'GET,HEAD,PUT,PATCH,POST,DELETE',
   });
 
   // ✅ HELMET
@@ -45,7 +41,6 @@ async function bootstrap() {
             "'self'",
             'http://localhost:3000',
             'http://localhost:4200',
-            'https://backend-raicesmx.onrender.com',
             'https://adminfront-1kr.pages.dev',
           ],
           fontSrc: ["'self'"],
