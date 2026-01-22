@@ -53,6 +53,7 @@ async function bootstrap() {
             // Producción
             'https://*.onrender.com',
             'https://tu-frontend.pages.dev',
+            'https://adminfront-1kr.pages.dev',
           ],
           fontSrc: ["'self'"],
           objectSrc: ["'none'"],
