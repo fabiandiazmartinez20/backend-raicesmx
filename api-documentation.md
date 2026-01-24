@@ -87,35 +87,34 @@ src/
 │   ├── auth.controller.ts
 │   ├── auth.service.ts
 │   ├── decorators/
-│   │   ├── get-user.decorator.ts    # Extrae usuario del request
-│   │   └── sanitize.decorator.ts    # Sanitización XSS
+│   │   ├── get-user.decorator.ts
+│   │   └── sanitize.decorator.ts
 │   ├── dto/
 │   │   ├── login.dto.ts
-│   │   └── register.dto.ts
-|   |   └── register.dto.ts
-|   |
-|   |──services/
-|   |  ├──password-reset.dto.ts
-│   │
-|   |──entities/
-|   |  ├──password-reset-code.entity.ts
-|   |
+│   │   ├── register.dto.ts
+│   │   └── password-reset.dto.ts
+│   ├── entities/
+│   │   └── password-reset-code.entity.ts
 │   ├── guards/
-│   │   ├── jwt-auth.guard.ts        # Protección de rutas
-│   │   └── seller.guard.ts          # Solo vendedores
-|   |   └── google-auth.guard.ts     # Guard de Google ← NUEVO
-│   └── strategies/
-│       └── jwt.strategy.ts          # Estrategia JWT
-│       └── google.strategy.ts
-└── users/                     # Módulo de Usuarios
-|    ├── users.module.ts
-|    ├── users.controller.ts
-|    ├── users.service.ts
-|    ├── dto/
-|    │   └── create-user.dto.ts
-|    └── entities/
-|        └── user.entity.ts|    │
-├── admin/                     # Módulo de Administradores ← NUEVO
+│   │   ├── jwt-auth.guard.ts
+│   │   ├── seller.guard.ts
+│   │   └── google-auth.guard.ts
+│   ├── strategies/
+│   │   ├── jwt.strategy.ts
+│   │   └── google.strategy.ts
+│   └── services/
+│       └── email.service.ts
+│
+├── users/
+│   ├── users.module.ts
+│   ├── users.controller.ts
+│   ├── users.service.ts
+│   ├── dto/
+│   │   └── create-user.dto.ts
+│   └── entities/
+│       └── user.entity.ts
+│
+├── admin/
 │   ├── admin.module.ts
 │   ├── admin.controller.ts
 │   ├── admin.service.ts
@@ -126,12 +125,12 @@ src/
 │   ├── entities/
 │   │   └── admin.entity.ts
 │   ├── guards/
-│   │   ├── admin-jwt.guard.ts        # Protección rutas admin
-│   │   └── super-admin.guard.ts      # Solo super admins
+│   │   ├── admin-jwt.guard.ts
+│   │   └── super-admin.guard.ts
 │   └── strategies/
-│       └── admin-jwt.strategy.ts     # Estrategia JWT admin
+│       └── admin-jwt.strategy.ts
 │
-├── seller-requests/           # Módulo de Solicitudes de Vendedor ← NUEVO
+├── seller-requests/
 │   ├── seller-requests.module.ts
 │   ├── seller-requests.controller.ts
 │   ├── seller-requests.service.ts
@@ -142,12 +141,28 @@ src/
 │   └── entities/
 │       └── seller-request.entity.ts
 │
-├── common/                    # Servicios compartidos ← NUEVO
-│   └── services/
-│       └── cloudinary.service.ts     # Subida de imágenes
+├── products/                  # 👈 NUEVO - Sistema de Productos
+│   ├── products.module.ts
+│   ├── products.controller.ts
+│   ├── products.service.ts
+│   ├── dto/
+│   │   ├── create-product.dto.ts
+│   │   ├── update-product.dto.ts
+│   │   └── get-products.dto.ts
+│   └── entities/
+│       ├── product.entity.ts
+│       ├── product-image.entity.ts
+│       └── category.entity.ts
 │
-└── scripts/                   # Scripts utilitarios ← NUEVO
-    └── create-admin.js               # Crear admin inicial
+├── common/                    # Servicios compartidos
+│   ├── common.module.ts
+│   ├── common.controller.ts   # 👈 NUEVO - Endpoints de geocodificación
+│   └── services/
+│       ├── cloudinary.service.ts
+│       └── geocoding.service.ts  # 👈 NUEVO - Geocodificación mexicana
+│
+└── scripts/
+    └── create-admin.js
 ```
 
 ### Patrón de Diseño
@@ -926,13 +941,50 @@ export class User {
   - Relaciones con usuarios y admins
   - Índices optimizados para búsquedas
 
-### 📋 Fase 2: Módulo de Productos (PRÓXIMO)
+### ✅ Fase 2: Módulo de Productos (COMPLETADO)
 
-- [ ] CRUD de productos artesanales
-- [ ] Categorías de productos
-- [ ] Subida de imágenes (AWS S3 o Cloudinary)
-- [ ] Búsqueda y filtros
-- [ ] Sistema de inventario
+- [x] **Backend completo**
+  - ProductsModule con CRUD completo
+  - CategoryEntity con 11 categorías predefinidas
+  - ProductEntity con ubicación completa
+  - ProductImageEntity con URLs de Cloudinary
+  - Subida de imágenes optimizadas (WebP, 80% calidad)
+  - Sistema de filtros avanzados (categoría, precio, estado, búsqueda)
+  - Paginación (12 productos por página)
+  - Contador de vistas y ventas
+
+- [x] **Sistema de geocodificación**
+  - CommonModule con GeocodingService
+  - Integración con MapTiler para geocodificación rápida
+  - Respaldo con Nominatim (OpenStreetMap)
+  - Endpoint público para códigos postales mexicanos
+  - Geocodificación inversa (coordenadas → dirección)
+  - Autocompletado de dirección con CP
+
+- [x] **Frontend de publicación**
+  - Formulario completo con validación en tiempo real
+  - Mapa interactivo con MapLibre + MapTiler
+  - Autocompletado de dirección por código postal
+  - Select dinámico de colonias (21+ colonias por CP)
+  - Subida de imágenes con preview (max 5)
+  - Cálculo de comisión en tiempo real (10%)
+  - Modal informativo de comisiones
+  - Checklist visual de validación
+  - Manejo de checkboxes de términos
+
+- [x] **Integraciones**
+  - Cloudinary para almacenamiento de imágenes
+  - MapTiler para geocodificación y mapas
+  - API de códigos postales mexicanos
+  - Conversión automática a WebP
+
+### 📋 Fase 3: Sistema de Órdenes (PRÓXIMO)
+
+- [ ] Carrito de compras
+- [ ] Checkout
+- [ ] Historial de órdenes
+- [ ] Estados de orden (pendiente, pagado, enviado, entregado)
+- [ ] Integración de pagos (Stripe, PayPal, Mercado Pago)
 
 **Entidades sugeridas:**
 
@@ -1625,27 +1677,303 @@ Eliminar solicitud y sus imágenes de Cloudinary
 
 ### Cobertura de Código
 
-- **Controladores:** 5 (Auth, Users, Admin, SellerRequests, App)
-- **Entidades:** 4 (User, PasswordResetCode, Admin, SellerRequest)
-- **Guards:** 6 (JwtAuth, SellerGuard, AdminJwt, SuperAdmin, GoogleAuth, adminGuard frontend)
-- **Servicios:** 10 (Auth, Users, Admin, SellerRequests, Email, Cloudinary, App, PasswordReset, AdminAuth, SellerRequestsFrontend)
-- **DTOs:** 8
-- **Decoradores:** 2 (GetUser, Sanitize)
-- **Strategies:** 3 (JWT, AdminJWT, Google)
-- **Archivos:** 60+
-- **Módulos:** 6 (App, Users, Auth, Admin, SellerRequests, Cloudinary)
-- **Endpoints Activos:** 25+
+- **Controladores:** 6 (Auth, Users, Admin, SellerRequests, Products, Common)
+- **Entidades:** 7 (User, PasswordResetCode, Admin, SellerRequest, Product, ProductImage, Category)
+- **Guards:** 6 (JwtAuth, SellerGuard, AdminJwt, SuperAdmin, GoogleAuth, adminGuard)
+- **Servicios:** 12 (Auth, Users, Admin, SellerRequests, Products, Email, Cloudinary, Geocoding, PasswordReset)
+- **DTOs:** 12
+- **Estrategias:** 3 (JWT, AdminJWT, Google)
+- **Archivos:** 75+
+- **Módulos:** 7 (App, Users, Auth, Admin, SellerRequests, Products, Common)
+- **Endpoints Activos:** 35+
 
 ### Endpoints por Categoría
 
-- **Públicos:** 3 (`/auth/register`, `/auth/login`, `/auth/google`)
-- **Protegidos (Usuarios):** 8 (requieren JwtAuthGuard)
+- **Públicos:** 5 (register, login, google, productos, categorías, geocodificación)
+- **Protegidos (Usuarios):** 12 (requieren JwtAuthGuard)
+- **Protegidos (Vendedores):** 8 (requieren SellerGuard)
 - **Protegidos (Admins):** 7 (requieren AdminJwtGuard)
 - **Super Admin:** 3 (requieren SuperAdminGuard)
 
 ### Frontend
 
-- **Componentes:** 8 (Login, Marketplace, Perfil, Navbar, VendedorFormulario, InicioAdmin, AprobacionesAdmin, NavbarAdmin)
-- **Servicios:** 3 (AuthService usuario, AuthService admin, SellerRequestsService)
+- **Componentes:** 9 (Login, Marketplace, Perfil, Navbar, VendedorFormulario, **PublicarProducto**, InicioAdmin, AprobacionesAdmin, NavbarAdmin)
+- **Servicios:** 4 (AuthService usuario, AuthService admin, SellerRequestsService, **ProductsService**)
 - **Guards:** 2 (authGuard usuario, adminGuard)
-- **Páginas:** 6
+- **Páginas:** 7
+
+### Frontend
+
+- **Componentes:** 9 (Login, Marketplace, Perfil, Navbar, VendedorFormulario, **PublicarProducto**, InicioAdmin, AprobacionesAdmin, NavbarAdmin)
+- **Servicios:** 4 (AuthService usuario, AuthService admin, SellerRequestsService, **ProductsService**)
+- **Guards:** 2 (authGuard usuario, adminGuard)
+- **Páginas:** 7
+
+---
+
+## 📦 MÓ DULO DE PRODUCTOS
+
+### **Descripción**
+
+Sistema completo de publicación y gestión de productos artesanales con:
+
+- Geocodificación automática de direcciones mexicanas
+- Subida de imágenes optimizadas a Cloudinary (WebP)
+- Sistema de categorías
+- Ubicación en mapa interactivo
+
+---
+
+### **Endpoints de Productos**
+
+#### **POST `/products`** 🔒 (Solo vendedores)
+
+Publicar un nuevo producto
+
+**Request Body (multipart/form-data):**
+
+```typescript
+{
+  titulo: string;              // 10-255 caracteres
+  descripcion: string;         // 50-2000 caracteres
+  categoryId: number;          // ID de categoría
+  precio: number;              // Precio en MXN
+  stock: number;               // Cantidad disponible
+  unidad: 'pieza' | 'kg' | 'litro' | 'paquete' | 'docena';
+
+  // Ubicación
+  calle: string;
+  numeroExterior: string;
+  numeroInterior?: string;
+  colonia: string;
+  codigoPostal: string;        // 5 dígitos
+  municipio: string;
+  estado: string;
+  referencia?: string;
+  latitud: number;
+  longitud: number;
+
+  // Imágenes (FormData)
+  imagenes: File[];            // Máx 5 imágenes, 5MB c/u
+}
+```
+
+**Response (201):**
+
+```typescript
+{
+  success: true,
+  message: "¡Producto publicado exitosamente!",
+  product: {
+    id: number,
+    titulo: string,
+    precio: number,
+    // ... resto de datos
+    images: ProductImage[]
+  }
+}
+```
+
+---
+
+#### **GET `/products`** 🌐 (Público)
+
+Listar productos con filtros
+
+**Query Parameters:**
+
+```typescript
+{
+  categoryId?: number;         // Filtrar por categoría
+  estado?: string;             // Filtrar por estado
+  minPrecio?: number;          // Precio mínimo
+  maxPrecio?: number;          // Precio máximo
+  search?: string;             // Búsqueda en título/descripción
+  ordenar?: 'recientes' | 'precio_asc' | 'precio_desc' | 'mas_vendidos';
+  page?: number;               // Página (default: 1)
+  limit?: number;              // Items por página (default: 12)
+}
+```
+
+**Response (200):**
+
+```typescript
+{
+  success: true,
+  count: number,
+  total: number,
+  page: number,
+  limit: number,
+  products: Product[]
+}
+```
+
+---
+
+#### **GET `/products/categories`** 🌐 (Público)
+
+Obtener todas las categorías
+
+**Response (200):**
+
+```typescript
+{
+  success: true,
+  count: number,
+  categories: [
+    {
+      id: number,
+      nombre: string,
+      descripcion: string,
+      icono: string
+    }
+  ]
+}
+```
+
+---
+
+#### **GET `/products/my-products`** 🔒 (Solo vendedores)
+
+Obtener productos del vendedor actual
+
+**Response (200):**
+
+```typescript
+{
+  success: true,
+  count: number,
+  products: Product[]
+}
+```
+
+---
+
+#### **GET `/products/:id`** 🌐 (Público)
+
+Obtener detalle de un producto
+
+**Response (200):**
+
+```typescript
+{
+  success: true,
+  product: {
+    id: number,
+    titulo: string,
+    descripcion: string,
+    precio: number,
+    stock: number,
+    // ... dirección completa
+    images: ProductImage[],
+    seller: { id, fullName, email },
+    category: { id, nombre, icono },
+    vistas: number,
+    ventas: number
+  }
+}
+```
+
+---
+
+#### **PATCH `/products/:id`** 🔒 (Solo dueño)
+
+Actualizar producto
+
+**Response (200):**
+
+```typescript
+{
+  success: true,
+  message: "Producto actualizado correctamente",
+  product: Product
+}
+```
+
+---
+
+#### **DELETE `/products/:id`** 🔒 (Solo dueño)
+
+Eliminar producto (también elimina imágenes de Cloudinary)
+
+**Response (200):**
+
+```typescript
+{
+  success: true,
+  message: "Producto eliminado correctamente"
+}
+```
+
+---
+
+### **Geocodificación (Endpoints públicos)**
+
+#### **GET `/geocoding/codigo-postal?cp=56700`** 🌐
+
+Obtener datos de código postal mexicano
+
+**Response (200):**
+
+```typescript
+{
+  success: true,
+  message: "Código postal encontrado",
+  data: {
+    colonia: string,
+    municipio: string,
+    estado: string,
+    codigoPostal: string,
+    latitud: number,
+    longitud: number,
+    colonias: string[]  // Todas las colonias del CP
+  }
+}
+```
+
+---
+
+#### **GET `/geocoding/reverse?lat=19.4326&lng=-99.1332`** 🌐
+
+Geocodificación inversa (coordenadas → dirección)
+
+**Response (200):**
+
+```typescript
+{
+  success: true,
+  message: "Dirección obtenida",
+  data: {
+    colonia: string,
+    municipio: string,
+    estado: string
+  }
+}
+```
+
+---
+
+### **Sistema de Imágenes**
+
+- **Formato:** WebP automático (80% calidad)
+- **Tamaño máximo:** 5MB por imagen
+- **Cantidad:** 1-5 imágenes por producto
+- **CDN:** Cloudinary
+- **Organización:** `products/product_{id}/imagen_{index}.webp`
+- **Eliminación:** Al borrar producto se eliminan de Cloudinary
+
+---
+
+### **Categorías predefinidas**
+
+1. Artesanías Mexicanas
+2. Textiles y Bordados
+3. Cerámica y Barro
+4. Joyería Tradicional
+5. Muebles Típicos
+6. Dulces Mexicanos
+7. Bebidas Tradicionales
+8. Instrumentos Musicales
+9. Ropa Tradicional
+10. Decoración Mexicana
+11. Otros Productos
