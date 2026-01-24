@@ -7,6 +7,8 @@ import { UsersModule } from './users/users.module';
 import { AuthModule } from './auth/auth.module';
 import { AdminModule } from './admin/admin.module';
 import { SellerRequestsModule } from './seller-request/seller-requests.module';
+import { ProductsModule } from './products/products.module';
+import { CommonModule } from './common/common.module'; // 👈 IMPORTAR
 
 /**
  * Módulo raíz de la aplicación
@@ -76,6 +78,8 @@ import { SellerRequestsModule } from './seller-request/seller-requests.module';
     AuthModule,
     SellerRequestsModule,
     AdminModule,
+    ProductsModule,
+    CommonModule,
   ],
 
   /**

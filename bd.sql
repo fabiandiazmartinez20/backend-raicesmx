@@ -73,3 +73,163 @@ CREATE TABLE seller_requests (
   UNIQUE KEY unique_active_request (user_id, status)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+
+
+
+
+
+
+
+
+-- =====================================================
+-- TABLA: categories
+-- Categorías de productos del marketplace
+-- =====================================================
+
+CREATE TABLE categories (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  nombre VARCHAR(100) NOT NULL UNIQUE,
+  descripcion TEXT,
+  icono VARCHAR(100) COMMENT 'Font Awesome icon name',
+  imagen_url VARCHAR(500),
+  is_active BOOLEAN DEFAULT TRUE,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+
+  INDEX idx_nombre (nombre),
+  INDEX idx_active (is_active)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Insertar categorías iniciales
+INSERT INTO categories (nombre, descripcion, icono) VALUES
+('Artesanías Mexicanas', 'Productos hechos a mano con técnicas tradicionales', 'fa-hands'),
+('Textiles y Bordados', 'Ropa y telas bordadas a mano', 'fa-shirt'),
+('Cerámica y Barro', 'Piezas de barro negro, talavera, etc.', 'fa-vase'),
+('Joyería Tradicional', 'Collares, aretes, pulseras artesanales', 'fa-gem'),
+('Muebles Típicos', 'Muebles artesanales de madera', 'fa-couch'),
+('Dulces Mexicanos', 'Dulces típicos regionales', 'fa-candy-cane'),
+('Bebidas Tradicionales', 'Mezcal, tequila, pulque, etc.', 'fa-wine-bottle'),
+('Instrumentos Musicales', 'Guitarras, maracas, tambores artesanales', 'fa-guitar'),
+('Ropa Tradicional', 'Huipiles, rebozos, vestidos típicos', 'fa-vest'),
+('Decoración Mexicana', 'Alebrijes, calaveras, artículos decorativos', 'fa-palette'),
+('Otros Productos', 'Productos que no entran en las otras categorías', 'fa-box'),
+('Productos Agrícolas', 'Frutas, verduras y productos del campo', 'fa-seedling');
+
+
+-- =====================================================
+-- TABLA: products
+-- Productos publicados por vendedores
+-- =====================================================
+DROP TABLE IF EXISTS products;
+
+CREATE TABLE products (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+
+  -- Relaciones
+  seller_id INT NOT NULL,
+  category_id INT NOT NULL,
+
+  -- Información básica
+  titulo VARCHAR(255) NOT NULL,
+  descripcion TEXT NOT NULL,
+
+  -- Precio y stock
+  precio DECIMAL(10,2) NOT NULL,
+  stock INT NOT NULL DEFAULT 0,
+  unidad ENUM('pieza','kg','litro','paquete','docena') DEFAULT 'pieza',
+
+  -- Ubicación
+  estado VARCHAR(100) NOT NULL,
+  municipio VARCHAR(255) NOT NULL,
+  colonia VARCHAR(255) NOT NULL,
+  codigo_postal VARCHAR(5) NOT NULL,
+  calle VARCHAR(255) NOT NULL,
+  numero_exterior VARCHAR(20) NOT NULL,
+  numero_interior VARCHAR(20),
+  referencia TEXT,
+
+  -- Coordenadas
+  latitud DECIMAL(10,8) NOT NULL,
+  longitud DECIMAL(11,8) NOT NULL,
+
+  -- Estado
+  is_active BOOLEAN DEFAULT TRUE,
+  is_featured BOOLEAN DEFAULT FALSE,
+
+  -- Métricas
+  vistas INT DEFAULT 0,
+  ventas INT DEFAULT 0,
+
+  -- Auditoría
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+
+  -- Índices
+  INDEX idx_seller (seller_id),
+  INDEX idx_category (category_id),
+  INDEX idx_active (is_active),
+  INDEX idx_codigo_postal (codigo_postal),
+  INDEX idx_estado (estado),
+  INDEX idx_precio (precio),
+  INDEX idx_created (created_at),
+
+  -- Foreign keys
+  CONSTRAINT fk_products_seller
+    FOREIGN KEY (seller_id) REFERENCES users(id)
+    ON DELETE CASCADE,
+
+  CONSTRAINT fk_products_category
+    FOREIGN KEY (category_id) REFERENCES categories(id)
+    ON DELETE RESTRICT
+
+) ENGINE=InnoDB
+DEFAULT CHARSET=utf8mb4
+COLLATE=utf8mb4_unicode_ci;
+
+-- =====================================================
+-- TABLA: product_images
+-- Imágenes de los productos (Cloudinary URLs)
+-- =====================================================
+CREATE TABLE product_images (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  product_id INT NOT NULL,
+  
+  -- URLs de Cloudinary (formato WebP optimizado)
+  image_url VARCHAR(500) NOT NULL COMMENT 'URL completa de Cloudinary',
+  public_id VARCHAR(255) NOT NULL COMMENT 'Public ID de Cloudinary (para eliminar)',
+  
+  -- Orden de visualización (0 = principal)
+  orden INT DEFAULT 0 COMMENT '0 = imagen principal, 1+ = secundarias',
+  
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  
+  FOREIGN KEY (product_id) REFERENCES products(id) ON DELETE CASCADE,
+  
+  INDEX idx_product (product_id),
+  INDEX idx_orden (product_id, orden)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+
+-- =====================================================
+-- VISTA: Productos con información completa
+-- =====================================================
+CREATE VIEW products_full AS
+SELECT 
+  p.*,
+  u.full_name AS seller_name,
+  u.email AS seller_email,
+  c.nombre AS category_name,
+  c.icono AS category_icon,
+  (SELECT COUNT(*) FROM product_images WHERE product_id = p.id) AS total_images,
+  (SELECT image_url FROM product_images WHERE product_id = p.id AND orden = 0 LIMIT 1) AS imagen_principal
+FROM products p
+INNER JOIN users u ON p.seller_id = u.id
+INNER JOIN categories c ON p.category_id = c.id;
+
+SELECT DATABASE();
+SHOW tables;
+SHOW FULL TABLES;
+
+select * from categories;
+
+DESCRIBE users;

@@ -417,31 +417,92 @@ Obtiene un usuario por ID
 
 ---
 
-### 4. EmailService (brevo)
+---
 
-**Descripción:** Servicio para envío de emails transaccionales con Resend
+## Sistema de Emails con Brevo
 
-**Método principal:**
+### **Emails Implementados**
 
-#### `sendPasswordResetCode(email, code, userName)`
+#### **1. Recuperación de Contraseña**
 
-Envía email con código de recuperación de contraseña
+- **Template:** HTML responsive con código de 6 dígitos
+- **Expira:** 15 minutos
+- **Trigger:** Usuario solicita recuperación de contraseña
+- **Método:** `sendPasswordResetCode(email, code, userName)`
 
-**Características:**
+#### **2. Aprobación de Vendedor** ✨
 
-- Plantilla HTML responsive con diseño de RaícesMX
-- Código visible de 6 dígitos
-- Advertencia de expiración (15 minutos)
-- Compatible con todos los clientes de email
+- **Template:** HTML con diseño de celebración
+- **Contenido:**
+  - Mensaje de felicitación
+  - Confirmación de cuenta activada
+  - Botón "Ir a Mi Perfil"
+  - Consejos para comenzar a vender
+  - Iconos de funcionalidades disponibles
+- **Trigger:** Admin aprueba solicitud de vendedor
+- **Método:** `sendSellerApprovalEmail(email, userName)`
 
-**Configuración:**
+#### **3. Rechazo de Vendedor** ✨
 
-```typescript
-RESEND_API_KEY=re_xxxxxxxxxxxxxxxxxxxxxxxxxx
-RESEND_FROM_EMAIL=onboarding@resend.dev
+- **Template:** HTML con diseño informativo
+- **Contenido:**
+  - Notificación de rechazo
+  - Razón específica del rechazo
+  - Recomendaciones para mejorar
+  - Botón "Enviar Nueva Solicitud"
+  - Consejos para documentación correcta
+- **Trigger:** Admin rechaza solicitud con razón
+- **Método:** `sendSellerRejectionEmail(email, userName, rejectionReason)`
+
+### **Características de las Plantillas**
+
+- ✅ Diseño responsive (mobile-first)
+- ✅ Colores de marca (RaícesMX)
+- ✅ Iconos y emojis para mejor UX
+- ✅ Call-to-action claros
+- ✅ Footer con información de copyright
+- ✅ Manejo de errores robusto (no bloquea flujo principal)
+
+### **Configuración de Brevo**
+
+```env
+BREVO_API_KEY=your_api_key_here
+BREVO_FROM_EMAIL=noreply@raicesmx.com
+BREVO_FROM_NAME=RaícesMX
 ```
 
----
+### **Librería Utilizada**
+
+```json
+{
+  "@getbrevo/brevo": "^2.0.0"
+}
+```
+
+### **Flujo de Envío**
+
+```typescript
+// Backend: seller-requests.service.ts
+async review(requestId: number, adminId: number, dto: ReviewSellerRequestDto) {
+  // ... actualizar solicitud ...
+
+  if (dto.status === 'approved') {
+    await this.userRepository.update({ id: request.userId }, { isSeller: true });
+
+    // ✨ Enviar email automático
+    try {
+      await this.emailService.sendSellerApprovalEmail(
+        request.user.email,
+        request.user.fullName
+      );
+      console.log('✅ Email de aprobación enviado');
+    } catch (error) {
+      console.error('❌ Error al enviar email:', error);
+      // No bloquea el flujo principal
+    }
+  }
+}
+```
 
 ---
 
@@ -824,6 +885,7 @@ export class User {
   - CloudinaryService para subida de imágenes en WebP
   - Guards de admin (AdminJwtGuard, SuperAdminGuard)
   - Script para crear administrador inicial
+  - **EmailService con Brevo para notificaciones automáticas**
 
 - [x] **Sistema de solicitudes**
   - Formulario de solicitud (CURP + INE)
@@ -832,17 +894,37 @@ export class User {
   - Validación de documentos
   - Cookies separadas (admin_token vs access_token)
 
+- [x] **Sistema de emails automáticos**
+  - Email de aprobación de vendedor (plantilla HTML personalizada)
+  - Email de rechazo con razón (plantilla HTML personalizada)
+  - Integración con Brevo (antes Sendinblue)
+  - Plantillas responsive y con diseño de marca
+
+- [x] **Panel de administrador (Frontend Angular)**
+  - Login de administradores (autenticación separada)
+  - Dashboard con estadísticas en tiempo real
+  - Navbar con navegación entre secciones
+  - **Componente de Aprobaciones completo:**
+    - Lista de solicitudes con filtros (pendientes, aprobadas, rechazadas, todas)
+    - Visualización de documentos (INE frontal y reverso)
+    - Aprobar solicitudes con confirmación
+    - Rechazar solicitudes con modal y razón obligatoria
+    - Modal de imagen ampliada para revisar documentos
+    - Toast de notificaciones
+    - Actualización automática después de aprobar/rechazar
+  - Guards de protección de rutas (adminGuard)
+
+- [x] **Frontend de usuarios actualizado**
+  - CTA de vendedor se oculta si ya tiene solicitud pendiente/aprobada/rechazada
+  - Botón "Publicar Producto" solo visible para vendedores aprobados
+  - Verificación de permisos en tiempo real
+  - Mensajes de estado según solicitud (pendiente, aprobada, rechazada)
+
 - [x] **Base de datos**
   - Tabla `admins` con roles (super_admin, admin)
-  - Tabla `seller_requests` con documentos
-  - Relaciones con usuarios
-
-- [ ] **Panel de administrador (Frontend)** → SIGUIENTE
-  - Dashboard con estadísticas
-  - Lista de solicitudes pendientes
-  - Aprobar/rechazar con razón
-  - Ver documentos del solicitante
-  - Gestión de usuarios
+  - Tabla `seller_requests` con documentos e historial de revisión
+  - Relaciones con usuarios y admins
+  - Índices optimizados para búsquedas
 
 ### 📋 Fase 2: Módulo de Productos (PRÓXIMO)
 
@@ -1287,3 +1369,283 @@ Aprobar o rechazar solicitud (solo admin)
 ```
 
 **Acción:** Si aprobada, `user.isSeller = true`
+
+---
+
+## API Endpoints - Administradores
+
+### **POST `/admin/login`** 🔐
+
+Login de administradores (cookie separada: `admin_token`)
+
+**Request Body:**
+
+```typescript
+{
+  email: string;
+  password: string;
+}
+```
+
+**Response (200):**
+
+```typescript
+{
+  success: true,
+  message: "¡Bienvenido, Administrador Principal!",
+  admin: {
+    id: number,
+    email: string,
+    fullName: string,
+    role: "super_admin" | "admin",
+    isActive: boolean
+  }
+}
+```
+
+---
+
+### **GET `/admin/profile`** 🛡️
+
+Obtiene el perfil del admin autenticado (requiere AdminJwtGuard)
+
+**Response (200):**
+
+```typescript
+{
+  success: true,
+  admin: {
+    id: number,
+    email: string,
+    fullName: string,
+    role: "super_admin" | "admin",
+    isActive: boolean
+  }
+}
+```
+
+---
+
+### **POST `/admin/logout`** 🛡️
+
+Cierra la sesión del admin (elimina cookie `admin_token`)
+
+**Response (200):**
+
+```typescript
+{
+  success: true,
+  message: "Sesión de administrador cerrada"
+}
+```
+
+---
+
+### **GET `/admin/dashboard/stats`** 🛡️
+
+Obtiene estadísticas del dashboard
+
+**Response (200):**
+
+```typescript
+{
+  success: true,
+  stats: {
+    totalUsers: number,
+    totalSellers: number,
+    totalBuyers: number,
+    pendingRequests: number,
+    approvedRequests: number,
+    rejectedRequests: number,
+    totalRequests: number
+  }
+}
+```
+
+---
+
+### **GET `/admin/users`** 🛡️
+
+Lista todos los usuarios registrados
+
+**Response (200):**
+
+```typescript
+{
+  success: true,
+  count: number,
+  users: User[]
+}
+```
+
+---
+
+## API Endpoints - Solicitudes de Vendedor
+
+### **POST `/seller-requests`** 🔐
+
+Crear solicitud de vendedor (con imágenes)
+
+**Request Body (multipart/form-data):**
+
+```typescript
+{
+  curp: string;              // CURP de 18 caracteres
+  ineFront: File;            // Imagen frontal INE (requerida, max 5MB)
+  ineBack?: File;            // Imagen trasera INE (opcional, max 5MB)
+}
+```
+
+**Response (201):**
+
+```typescript
+{
+  success: true,
+  message: "Solicitud enviada exitosamente. Recibirás una respuesta pronto.",
+  request: {
+    id: number,
+    status: "pending",
+    createdAt: Date
+  }
+}
+```
+
+**Validaciones:**
+
+- Solo imágenes (JPEG, PNG, WebP)
+- Máximo 5MB por imagen
+- Solo 1 solicitud pendiente por usuario
+
+---
+
+### **GET `/seller-requests/me`** 🔐
+
+Obtiene la solicitud del usuario actual
+
+**Response (200):**
+
+```typescript
+{
+  success: true,
+  hasRequest: boolean,
+  request: {
+    id: number,
+    status: "pending" | "approved" | "rejected",
+    curp: string,
+    createdAt: Date,
+    reviewedAt?: Date,
+    rejectionReason?: string
+  } | null
+}
+```
+
+---
+
+### **GET `/seller-requests?status=pending`** 🛡️ (Admin)
+
+Lista solicitudes con filtro opcional
+
+**Query Params:**
+
+- `status`: "pending" | "approved" | "rejected" | "all"
+
+**Response (200):**
+
+```typescript
+{
+  success: true,
+  count: number,
+  requests: [
+    {
+      id: number,
+      userId: number,
+      curp: string,
+      ineFrontUrl: string,
+      ineBackUrl?: string,
+      status: "pending" | "approved" | "rejected",
+      createdAt: Date,
+      reviewedAt?: Date,
+      rejectionReason?: string,
+      user: {
+        id: number,
+        email: string,
+        fullName: string
+      }
+    }
+  ]
+}
+```
+
+---
+
+### **PATCH `/seller-requests/:id/review`** 🛡️ (Admin)
+
+Aprobar o rechazar solicitud
+
+**Request Body:**
+
+```typescript
+{
+  status: "approved" | "rejected",
+  rejectionReason?: string  // Requerido si status = "rejected"
+}
+```
+
+**Response (200):**
+
+```typescript
+{
+  success: true,
+  message: "Solicitud aprobada. Usuario ahora es vendedor. Email de confirmación enviado.",
+  request: { /* datos actualizados */ }
+}
+```
+
+**Acciones automáticas:**
+
+- Si aprobada: `user.isSeller = true` + **Email de felicitación enviado**
+- Si rechazada: **Email de notificación con razón enviado**
+
+---
+
+### **DELETE `/seller-requests/:id`** 🛡️ (Admin)
+
+Eliminar solicitud y sus imágenes de Cloudinary
+
+**Response (200):**
+
+```typescript
+{
+  success: true,
+  message: "Solicitud eliminada correctamente"
+}
+```
+
+## Métricas Actuales
+
+### Cobertura de Código
+
+- **Controladores:** 5 (Auth, Users, Admin, SellerRequests, App)
+- **Entidades:** 4 (User, PasswordResetCode, Admin, SellerRequest)
+- **Guards:** 6 (JwtAuth, SellerGuard, AdminJwt, SuperAdmin, GoogleAuth, adminGuard frontend)
+- **Servicios:** 10 (Auth, Users, Admin, SellerRequests, Email, Cloudinary, App, PasswordReset, AdminAuth, SellerRequestsFrontend)
+- **DTOs:** 8
+- **Decoradores:** 2 (GetUser, Sanitize)
+- **Strategies:** 3 (JWT, AdminJWT, Google)
+- **Archivos:** 60+
+- **Módulos:** 6 (App, Users, Auth, Admin, SellerRequests, Cloudinary)
+- **Endpoints Activos:** 25+
+
+### Endpoints por Categoría
+
+- **Públicos:** 3 (`/auth/register`, `/auth/login`, `/auth/google`)
+- **Protegidos (Usuarios):** 8 (requieren JwtAuthGuard)
+- **Protegidos (Admins):** 7 (requieren AdminJwtGuard)
+- **Super Admin:** 3 (requieren SuperAdminGuard)
+
+### Frontend
+
+- **Componentes:** 8 (Login, Marketplace, Perfil, Navbar, VendedorFormulario, InicioAdmin, AprobacionesAdmin, NavbarAdmin)
+- **Servicios:** 3 (AuthService usuario, AuthService admin, SellerRequestsService)
+- **Guards:** 2 (authGuard usuario, adminGuard)
+- **Páginas:** 6
