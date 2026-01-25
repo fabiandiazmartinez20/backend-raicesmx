@@ -9,6 +9,7 @@ import { AdminModule } from './admin/admin.module';
 import { SellerRequestsModule } from './seller-request/seller-requests.module';
 import { ProductsModule } from './products/products.module';
 import { CommonModule } from './common/common.module'; // 👈 IMPORTAR
+import { ChatbotModule } from './chatbot/chatbot.module';
 
 /**
  * Módulo raíz de la aplicación
@@ -80,6 +81,7 @@ import { CommonModule } from './common/common.module'; // 👈 IMPORTAR
     AdminModule,
     ProductsModule,
     CommonModule,
+    ChatbotModule,
   ],
 
   /**
