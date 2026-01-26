@@ -56,7 +56,7 @@ export class ChatbotService {
   private getCachedResponse(key: string): string | null {
     const cached = this.responseCache.get(key);
     if (cached && Date.now() - cached.timestamp < this.CACHE_TTL) {
-      console.log('✅ Respuesta obtenida del caché');
+      console.log(' Respuesta obtenida del caché');
       return cached.text;
     }
     return null;
@@ -84,14 +84,14 @@ export class ChatbotService {
       }
 
       const response = await this.ai.models.generateContent({
-        model: 'gemini-2.5-flash', // ✅ Modelo con mejor cuota
+        model: 'gemini-2.5-flash', //  Modelo con mejor cuota
         contents: `
           Eres un asistente virtual amigable de RaícesMX, un marketplace de productos artesanales mexicanos.
           
           Genera un saludo de bienvenida corto (máximo 2 líneas) que sea:
           - Amigable y profesional
           - Que mencione que puedes ayudar con productos artesanales
-          - Usa 1-2 emojis mexicanos (🇲🇽 🎨 ✨)
+          - Usa 1-2 emojis mexicanos (🇲🇽  ✨)
           
           Genera SOLO el saludo, sin explicaciones adicionales.
         `,
@@ -142,7 +142,7 @@ export class ChatbotService {
       const totalProducts = await this.productRepository.count();
 
       const response = `
-🛍️ **Productos Artesanales Disponibles en RaícesMX**
+ **Productos Artesanales Disponibles en RaícesMX**
 
 Actualmente tenemos **${totalProducts} productos** en ${categories.length} categorías:
 
@@ -159,21 +159,21 @@ Cada producto es único, hecho a mano por artesanos mexicanos con técnicas trad
       console.error('Error listando productos:', error);
 
       return `
-🛍️ **Productos Artesanales Disponibles en RaícesMX**
+ **Productos Artesanales Disponibles en RaícesMX**
 
 Tenemos 11 categorías principales de artesanías mexicanas:
 
-🎨 **Artesanías Mexicanas** - Alebrijes, máscaras, papel picado
-🧵 **Textiles y Bordados** - Huipiles, rebozos, sarapes
-🏺 **Cerámica y Barro** - Talavera, barro negro, macetas
-💍 **Joyería Tradicional** - Plata de Taxco, ámbar, filigrana
-🪑 **Muebles Típicos** - Equipales, baúles pintados
-🍬 **Dulces Mexicanos** - Ate, cocadas, palanquetas
-🍫 **Bebidas Tradicionales** - Mezcal, chocolate de metate
-🎸 **Instrumentos Musicales** - Guitarras, jaranas, marimbas
-👗 **Ropa Tradicional** - Vestidos típicos, guayaberas
-🏠 **Decoración Mexicana** - Piñatas, velas, macetas
-✨ **Otros Productos** - Artículos diversos de artesanos
+ **Artesanías Mexicanas** - Alebrijes, máscaras, papel picado
+**Textiles y Bordados** - Huipiles, rebozos, sarapes
+**Cerámica y Barro** - Talavera, barro negro, macetas
+ **Joyería Tradicional** - Plata de Taxco, ámbar, filigrana
+ **Muebles Típicos** - Equipales, baúles pintados
+ **Dulces Mexicanos** - Ate, cocadas, palanquetas
+ **Bebidas Tradicionales** - Mezcal, chocolate de metate
+ **Instrumentos Musicales** - Guitarras, jaranas, marimbas
+ **Ropa Tradicional** - Vestidos típicos, guayaberas
+**Decoración Mexicana** - Piñatas, velas, macetas
+ **Otros Productos** - Artículos diversos de artesanos
 
 ¿Te interesa alguna categoría en particular? 🇲🇽
       `.trim();
@@ -301,7 +301,52 @@ ${userMessage}
       return [];
     }
   }
+  // Agregar estos métodos a chatbot.service.ts
 
+  /**
+   *  Detecta si el usuario pregunta por productos cercanos
+   */
+  isMapRequest(userMessage: string): boolean {
+    const lowerMessage = userMessage.toLowerCase();
+    const mapKeywords = [
+      'cerca de mí',
+      'cerca de mi',
+      'por donde vivo',
+      'por aquí',
+      'por aca',
+      'en mi zona',
+      'en mi área',
+      'cerca de aquí',
+      'productos cercanos',
+      'productos cerca',
+      'artesanías cerca',
+      'qué hay cerca',
+      'que hay cerca',
+      'ubicación',
+      'ubicacion',
+      'mapa',
+      'por mi ubicación',
+      'por mi ubicacion',
+    ];
+
+    return mapKeywords.some((keyword) => lowerMessage.includes(keyword));
+  }
+
+  /**
+   *  Genera respuesta especial para solicitud de mapa
+   */
+  async generateMapRequest(): Promise<{
+    type: 'map_request';
+    message: string;
+  }> {
+    return {
+      type: 'map_request',
+      message:
+        ' Para mostrarte productos cerca de ti, necesito tu ubicación. ' +
+        'Acepta el permiso de geolocalización y te mostraré artesanías ' +
+        'mexicanas en un radio de 5 kilómetros. ',
+    };
+  }
   /**
    * Extrae el texto de la respuesta de Gemini
    */

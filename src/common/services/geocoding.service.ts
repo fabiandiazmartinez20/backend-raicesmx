@@ -167,7 +167,38 @@ export class GeocodingService {
       throw error;
     }
   }
+  // AGREGAR este método al final de la clase GeocodingService
+  // (DESPUÉS de geocodificarInversaConNominatim, ANTES del cierre de la clase)
 
+  /**
+   * 🗺️ Obtener URL del estilo de mapa de MapTiler
+   * Este método se usa para el frontend con MapLibre GL
+   */
+  getMapStyleUrl(): string {
+    if (!this.MAPTILER_API_KEY || this.MAPTILER_API_KEY === 'demo') {
+      this.logger.warn(
+        '⚠️ MapTiler API Key no configurada, usando estilo demo',
+      );
+      return `https://api.maptiler.com/maps/streets-v2/style.json?key=demo`;
+    }
+
+    return `https://api.maptiler.com/maps/streets-v2/style.json?key=${this.MAPTILER_API_KEY}`;
+  }
+
+  /**
+   * 🗺️ Obtener la API Key de MapTiler (para uso del frontend)
+   * Solo devuelve la key si está configurada correctamente
+   */
+  getMapTilerApiKey(): string {
+    if (!this.MAPTILER_API_KEY || this.MAPTILER_API_KEY === 'demo') {
+      this.logger.warn(
+        '⚠️ MapTiler API Key no configurada. El mapa puede no funcionar correctamente.',
+      );
+      return 'demo';
+    }
+
+    return this.MAPTILER_API_KEY;
+  }
   /**
    * Geocodificación inversa
    */

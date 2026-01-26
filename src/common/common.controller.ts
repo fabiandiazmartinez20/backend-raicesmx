@@ -26,6 +26,19 @@ export class CommonController {
   }
 
   /**
+   * GET /geocoding/map-config
+   * Obtiene la configuración del mapa (API Key y estilo)
+   */
+  @Get('map-config')
+  getMapConfig() {
+    return {
+      success: true,
+      apiKey: this.geocodingService.getMapTilerApiKey(),
+      styleUrl: this.geocodingService.getMapStyleUrl(),
+    };
+  }
+
+  /**
    * GET /geocoding/reverse?lat=19.4326&lng=-99.1332
    */
   @Get('reverse')

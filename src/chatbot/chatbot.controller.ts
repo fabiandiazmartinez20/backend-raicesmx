@@ -54,6 +54,8 @@ export class ChatbotController {
     }
   }
 
+  // REEMPLAZAR el método sendMessage() en chatbot.controller.ts
+
   /**
    * POST /chatbot/message
    * Envía un mensaje al chatbot y obtiene respuesta
@@ -62,6 +64,17 @@ export class ChatbotController {
   async sendMessage(@Body() dto: SendMessageDto) {
     try {
       const { message } = dto;
+
+      // 🗺️ NUEVO: Detectar si el usuario pregunta por productos cercanos
+      if (this.chatbotService.isMapRequest(message)) {
+        const mapResponse = await this.chatbotService.generateMapRequest();
+        return {
+          success: true,
+          type: 'map_request', // ✅ Indica al frontend que muestre mapa
+          message: mapResponse.message,
+          timestamp: new Date(),
+        };
+      }
 
       // Detectar si el usuario pregunta por productos
       const isProductRequest = this.isProductListRequest(message);
@@ -76,6 +89,7 @@ export class ChatbotController {
 
       return {
         success: true,
+        type: 'text', // ✅ Respuesta normal de texto
         message: response,
         timestamp: new Date(),
       };
@@ -84,6 +98,7 @@ export class ChatbotController {
 
       return {
         success: false,
+        type: 'text',
         message:
           'Lo siento, tuve un problema al procesar tu mensaje. Por favor, intenta de nuevo o contacta a nuestro equipo de soporte. 😊',
         timestamp: new Date(),

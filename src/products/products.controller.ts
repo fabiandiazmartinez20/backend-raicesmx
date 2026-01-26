@@ -100,6 +100,57 @@ export class ProductsController {
     };
   }
 
+  // Agregar este endpoint a products.controller.ts (DESPUÉS de @Get('categories'))
+
+  /**
+   * GET /products/nearby?lat=19.432&lng=-99.133&radius=5
+   * Buscar productos cercanos a una ubicación (público)
+   */
+  @Get('nearby')
+  async findNearby(
+    @Query('lat') lat: string,
+    @Query('lng') lng: string,
+    @Query('radius') radius?: string,
+  ) {
+    // Validar que lat y lng sean números válidos
+    const latitude = parseFloat(lat);
+    const longitude = parseFloat(lng);
+    const radiusKm = radius ? parseFloat(radius) : 5;
+
+    if (isNaN(latitude) || isNaN(longitude)) {
+      throw new BadRequestException(
+        'Coordenadas inválidas. Proporciona lat y lng válidos.',
+      );
+    }
+
+    if (latitude < -90 || latitude > 90) {
+      throw new BadRequestException('Latitud debe estar entre -90 y 90');
+    }
+
+    if (longitude < -180 || longitude > 180) {
+      throw new BadRequestException('Longitud debe estar entre -180 y 180');
+    }
+
+    if (radiusKm <= 0 || radiusKm > 50) {
+      throw new BadRequestException('Radio debe estar entre 1 y 50 km');
+    }
+
+    const products = await this.productsService.findNearbyProducts(
+      latitude,
+      longitude,
+      radiusKm,
+    );
+
+    return {
+      success: true,
+      message: `Productos encontrados en ${radiusKm}km`,
+      count: products.length,
+      userLocation: { lat: latitude, lng: longitude },
+      radius: radiusKm,
+      products,
+    };
+  }
+
   /**
    * GET /products/my-products
    * Obtener productos del vendedor actual

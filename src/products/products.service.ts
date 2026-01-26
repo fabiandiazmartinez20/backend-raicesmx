@@ -94,6 +94,128 @@ export class ProductsService {
       throw new BadRequestException('Error al subir las imágenes del producto');
     }
   }
+  // Agregar este método a products.service.ts
+
+  /**
+   * 🗺️ Buscar productos cercanos usando fórmula Haversine
+   * @param lat Latitud del usuario
+   * @param lng Longitud del usuario
+   * @param radiusKm Radio de búsqueda en kilómetros (default: 5)
+   */
+  // REEMPLAZAR el método findNearbyProducts en products.service.ts
+
+  async findNearbyProducts(
+    lat: number,
+    lng: number,
+    radiusKm: number = 5,
+  ): Promise<Product[]> {
+    this.logger.log(
+      `🔍 Buscando productos cerca de (${lat}, ${lng}) en radio de ${radiusKm}km`,
+    );
+
+    // Obtener todos los productos activos con ubicación
+    const allProducts = await this.productRepository.find({
+      where: { isActive: true },
+      relations: ['category', 'seller', 'images'],
+    });
+
+    this.logger.log(`📦 Total de productos activos: ${allProducts.length}`);
+
+    // 🔍 DEBUG: Ver coordenadas de todos los productos
+    allProducts.forEach((product, index) => {
+      this.logger.log(
+        `Producto ${index + 1}: "${product.titulo}" - Lat: ${product.latitud}, Lng: ${product.longitud}`,
+      );
+    });
+
+    // Filtrar productos usando fórmula Haversine
+    const nearbyProducts = allProducts.filter((product) => {
+      if (!product.latitud || !product.longitud) {
+        this.logger.warn(
+          `⚠️ Producto "${product.titulo}" (ID: ${product.id}) NO tiene coordenadas`,
+        );
+        return false; // Ignorar productos sin coordenadas
+      }
+
+      const distance = this.calculateDistance(
+        lat,
+        lng,
+        product.latitud,
+        product.longitud,
+      );
+
+      this.logger.log(
+        `📏 Distancia a "${product.titulo}": ${distance.toFixed(2)}km`,
+      );
+
+      // Agregar distancia al objeto (para ordenar después)
+      (product as any).distance = parseFloat(distance.toFixed(2));
+
+      const isNearby = distance <= radiusKm;
+      this.logger.log(
+        `${isNearby ? '✅' : '❌'} "${product.titulo}": ${distance.toFixed(2)}km ${isNearby ? '(DENTRO del radio)' : '(FUERA del radio)'}`,
+      );
+
+      return isNearby;
+    });
+
+    // Ordenar por distancia (más cercanos primero)
+    nearbyProducts.sort((a, b) => (a as any).distance - (b as any).distance);
+
+    this.logger.log(
+      `✅ Encontrados ${nearbyProducts.length} productos en ${radiusKm}km`,
+    );
+
+    if (nearbyProducts.length > 0) {
+      this.logger.log('📍 Productos cercanos:');
+      nearbyProducts.forEach((p) => {
+        this.logger.log(
+          `  - "${p.titulo}" a ${(p as any).distance}km (${p.colonia}, ${p.municipio})`,
+        );
+      });
+    } else {
+      this.logger.warn(
+        '⚠️ NO se encontraron productos en el radio especificado',
+      );
+    }
+
+    return nearbyProducts;
+  }
+
+  // Métodos calculateDistance y toRad sin cambios (ya los tienes)
+  /**
+   * 📐 Fórmula Haversine para calcular distancia entre dos puntos
+   * @returns Distancia en kilómetros
+   */
+  private calculateDistance(
+    lat1: number,
+    lon1: number,
+    lat2: number,
+    lon2: number,
+  ): number {
+    const R = 6371; // Radio de la Tierra en km
+    const dLat = this.toRad(lat2 - lat1);
+    const dLon = this.toRad(lon2 - lon1);
+
+    const a =
+      Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+      Math.cos(this.toRad(lat1)) *
+        Math.cos(this.toRad(lat2)) *
+        Math.sin(dLon / 2) *
+        Math.sin(dLon / 2);
+
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+    const distance = R * c;
+
+    return distance;
+  }
+
+  /**
+   * Convierte grados a radianes
+   */
+  private toRad(degrees: number): number {
+    return (degrees * Math.PI) / 180;
+  }
 
   /**
    * Subir imágenes del producto a Cloudinary
