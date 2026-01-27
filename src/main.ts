@@ -10,6 +10,7 @@ async function bootstrap() {
   const allowedOrigins = [
     'http://localhost:4200', // Angular local
     'https://adminfront-1kr.pages.dev', // TU FRONT REAL
+    'https://raicesmx.pages.dev/', // TU BACKEND REAL
   ];
 
   const app = await NestFactory.create(AppModule);
@@ -42,6 +43,7 @@ async function bootstrap() {
             'http://localhost:3000',
             'http://localhost:4200',
             'https://adminfront-1kr.pages.dev',
+            'https://raicesmx.pages.dev',
           ],
           fontSrc: ["'self'"],
           objectSrc: ["'none'"],
