@@ -169,6 +169,20 @@ src/
 |    └── dto/
 |        └── send-message.dto.ts
 |
+|
+|└──cart/
+├    | ── cart.module.ts
+├    |── cart.controller.ts
+├    |── cart.service.ts
+├    └── entities/
+│    ├── cart.entity.ts
+│    └── cart-item.entity.ts
+|    └── dto/
+|    ├── apply-coupon.dto.ts
+|    └── update-cart-item.dto.ts|
+|
+|
+|
 └── scripts/
     └── create-admin.js
 ```
@@ -2156,3 +2170,173 @@ Geocodificación inversa (coordenadas → dirección)
 - **Servicios:** 6 (...existentes + **ChatbotService**, **MapService**)
 - **Guards:** 2 (authGuard usuario, adminGuard)
 - **Páginas:** 8 (...existentes + **/chatbot**)
+
+📋 RESUMEN DE IMPLEMENTACIONES - Sesión Marketplace + Carrito
+🎯 IMPLEMENTACIONES COMPLETADAS
+
+1. ✅ Sistema de Paginación en Marketplace
+   Problema inicial: Los productos se cargaban pero el spinner se quedaba indefinidamente.
+   Solución implementada:
+
+Agregado ChangeDetectorRef para forzar actualización de vista
+Implementado setTimeout() con 2 segundos de delay para mejor UX
+Sistema de paginación completo con botones numéricos
+Navegación: Anterior/Siguiente con validación
+Puntos suspensivos (...) para muchas páginas
+Info de paginación: "Mostrando X-Y de Z productos"
+Scroll automático al cambiar de página
+
+Archivos modificados:
+src/app/marketplace/
+├── marketplace.component.ts (Agregado ChangeDetectorRef + setTimeout)
+├── marketplace.component.html (Sistema de paginación completo)
+└── marketplace.component.scss (Estilos de paginación + spinner)
+Características del spinner:
+
+Dos círculos giratorios (rojo y dorado mexicano)
+Ícono de Material Icons en el centro
+Puntos animados "..."
+Mensaje personalizable
+Responsive automático
+Modo oscuro incluido
+Delay de 2 segundos para mejor experiencia visual
+
+2. ✅ Vista de Detalle de Producto (view-product)
+   Implementación: Componente completo para ver detalles de productos.
+   Características implementadas:
+
+Consumo de API real (ProductsService.getProductById())
+Galería de imágenes interactiva con zoom
+Navegación entre imágenes (flechas + miniaturas)
+Información completa del producto desde la BD
+Datos del vendedor real
+Ubicación completa (colonia, municipio, estado, CP)
+Control de stock en tiempo real
+Productos relacionados de la misma categoría
+Loading spinner mientras carga
+Manejo de producto no encontrado (404)
+Navegación automática entre productos
+Botones deshabilitados si no hay stock
+
+Archivos creados:
+src/app/view-product/
+├── view-product.component.ts (Lógica + consumo API)
+├── view-product.html (Template completo)
+└── view-product.scss (Estilos + loading + not-found)
+Integración con Marketplace:
+html<!-- En marketplace.component.html -->
+<a class="btn-details" [routerLink]="['/producto', producto.id]">
+<i class="material-icons">visibility</i>
+Ver detalles
+</a>
+
+3. ✅ ProductsService Completo
+   Problema: Faltaba el método getProductsByCategory() y otros métodos útiles.
+   Métodos agregados:
+
+searchProducts() - Buscar por texto
+getProductsByCategory() - Filtrar por categoría
+getProductsByPriceRange() - Filtrar por rango de precio
+getProductsByEstado() - Filtrar por estado
+getBestSellers() - Obtener más vendidos
+getNewestProducts() - Obtener más recientes
+
+Archivo actualizado:
+src/app/service/products.service.ts
+
+4. ✅ Fix del Chatbot - Código Postal
+   Problema: El spinner se quedaba cargando infinitamente al ingresar código postal.
+   Causa: El isLoadingPostalCode = false se ejecutaba después de fetchNearbyProducts(), que activaba su propio loading.
+   Solución:
+   typescript// ANTES (incorrecto)
+   this.fetchNearbyProducts(lat, lng);
+   this.isLoadingPostalCode = false; // ❌ Tarde
+
+// DESPUÉS (correcto)
+this.isLoadingPostalCode = false; // ✅ Primero
+this.cdr.detectChanges();
+this.fetchNearbyProducts(lat, lng); // ✅ Después
+Mejoras adicionales:
+
+Validación de response.data antes de usar
+Mensajes de error más específicos (404, 0, etc)
+Logs mejorados para debugging
+cdr.detectChanges() en los lugares correctos
+
+Archivo corregido:
+src/app/chatbot/chatbot.component.ts
+
+5. ✅ Sistema de Carrito de Compras (Implementado por ti)
+   Tablas creadas en MySQL:
+   Tabla carts:
+   sqlCREATE TABLE `carts` (
+   `id` INT NOT NULL AUTO_INCREMENT,
+   `userId` INT NOT NULL,
+   `subtotal` DECIMAL(10, 2) DEFAULT 0.00,
+   `envio` DECIMAL(10, 2) DEFAULT 0.00,
+   `descuento` DECIMAL(10, 2) DEFAULT 0.00,
+   `total` DECIMAL(10, 2) DEFAULT 0.00,
+   `codigoCupon` VARCHAR(50) NULL,
+   `activo` TINYINT(1) DEFAULT 1,
+   `createdAt` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+   `updatedAt` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+   PRIMARY KEY (`id`),
+   UNIQUE KEY `idx_user_active_cart` (`userId`, `activo`),
+   CONSTRAINT `fk_cart_user` FOREIGN KEY (`userId`) REFERENCES `users` (`id`) ON DELETE CASCADE
+   );
+   Tabla cart_items:
+   sqlCREATE TABLE `cart_items` (
+   `id` INT NOT NULL AUTO_INCREMENT,
+   `cartId` INT NOT NULL,
+   `productId` INT NOT NULL,
+   `cantidad` INT DEFAULT 1,
+   `precioUnitario` DECIMAL(10, 2) NOT NULL,
+   `subtotal` DECIMAL(10, 2) NOT NULL,
+   `createdAt` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+   `updatedAt` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+   PRIMARY KEY (`id`),
+   UNIQUE KEY `idx_cart_product` (`cartId`, `productId`),
+   CONSTRAINT `fk_cart_item_cart` FOREIGN KEY (`cartId`) REFERENCES `carts` (`id`) ON DELETE CASCADE,
+   CONSTRAINT `fk_cart_item_product` FOREIGN KEY (`productId`) REFERENCES `products` (`id`) ON DELETE CASCADE
+   );
+   Índices creados para rendimiento:
+   sqlCREATE INDEX `idx_cart_user` ON `carts` (`userId`);
+   CREATE INDEX `idx_cart_item_cart` ON `cart_items` (`cartId`);
+   CREATE INDEX `idx_cart_item_product` ON `cart_items` (`productId`);
+
+Funcionalidades del carrito:
+
+✅ Agregar productos al carrito
+✅ Actualizar cantidad de items
+✅ Eliminar items del carrito
+✅ Cálculo automático de subtotal, envío y total
+✅ Sistema de cupones de descuento
+✅ Un carrito activo por usuario
+✅ Validación de stock al agregar productos
+✅ Relaciones con usuarios y productos
+✅ Soft delete con cascada
+
+📊 ARQUITECTURA COMPLETA ACTUAL
+Frontend (Angular 18)
+src/app/
+├── marketplace/ ← Marketplace con paginación
+│ ├── marketplace.component.ts
+│ ├── marketplace.html
+│ └── marketplace.scss
+├── view-product/ ← Vista detalle producto
+│ ├── view-product.component.ts
+│ ├── view-product.html
+│ └── view-product.scss
+├── chatbot/ ← Chatbot con mapas
+│ ├── chatbot.component.ts
+│ ├── chatbot.html
+│ └── chatbot.scss
+├── cart/ ← Carrito de compras (nuevo)
+│ ├── cart.component.ts
+│ ├── cart.html
+│ └── cart.scss
+└── service/
+├── products.service.ts ← Servicio completo con 6+ métodos
+├── chatbot.service.ts ← Servicio con mapas + CP
+├── map.service.ts ← MapLibre GL JS
+└── cart.service.ts ← Servicio del carrito (nuevo)

@@ -10,6 +10,8 @@ import { SellerRequestsModule } from './seller-request/seller-requests.module';
 import { ProductsModule } from './products/products.module';
 import { CommonModule } from './common/common.module'; // 👈 IMPORTAR
 import { ChatbotModule } from './chatbot/chatbot.module';
+import { CartModule } from './cart/cart.module';
+import { OrdersModule } from './orders/orders.module';
 
 /**
  * Módulo raíz de la aplicación
@@ -82,6 +84,8 @@ import { ChatbotModule } from './chatbot/chatbot.module';
     ProductsModule,
     CommonModule,
     ChatbotModule,
+    CartModule,
+    OrdersModule,
   ],
 
   /**
