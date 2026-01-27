@@ -161,6 +161,14 @@ src/
 │       ├── cloudinary.service.ts
 │       └── geocoding.service.ts  # 👈 NUEVO - Geocodificación mexicana
 │
+|
+└── chatbot/
+|    ├── chatbot.module.ts
+|    ├── chatbot.controller.ts
+|    ├── chatbot.service.ts
+|    └── dto/
+|        └── send-message.dto.ts
+|
 └── scripts/
     └── create-admin.js
 ```
@@ -978,6 +986,70 @@ export class User {
   - API de códigos postales mexicanos
   - Conversión automática a WebP
 
+  - [x] **Sistema de chatbot con búsqueda de productos cercanos**
+  - ChatbotModule con integración de Gemini AI
+  - Detección inteligente de solicitudes de ubicación
+  - Geolocalización automática (GPS para móviles)
+  - Entrada manual de código postal (preciso para laptops/PCs)
+  - Búsqueda por radio (50km) usando fórmula Haversine
+  - Mapa interactivo con MapLibre GL + MapTiler
+  - Marcadores personalizados (usuario azul, productos rojos numerados)
+  - Popups con información del producto (imagen, precio, distancia)
+  - Lista de productos debajo del mapa con botones de acción
+  - Feedback visual con spinners y mensajes de estado
+  - Sistema híbrido de ubicación para cualquier dispositivo
+
+  ### ✅ Fase 2.5: Chatbot Inteligente con Búsqueda Geoespacial (COMPLETADO)
+
+- [x] **Backend del chatbot**
+  - Integración con Google Gemini AI (generación de respuestas)
+  - Detección de palabras clave para productos cercanos
+  - Endpoint `/chatbot/message` con respuestas tipadas (text, map_request, map_response)
+  - Cache de respuestas comunes (5 minutos TTL)
+  - Rate limiting (10 requests/minuto)
+  - Endpoint `/geocoding/map-config` para exponer API Key de MapTiler
+- [x] **Sistema de búsqueda geoespacial**
+  - Endpoint `/products/nearby?lat=X&lng=Y&radius=50`
+  - Fórmula Haversine para cálculo de distancias
+  - Filtrado de productos por coordenadas válidas
+  - Ordenamiento por distancia (más cercanos primero)
+  - Agregación de distancia a cada producto
+
+- [x] **Frontend del chatbot**
+  - Componente standalone con diseño moderno
+  - Sistema de mensajes tipados (user/bot)
+  - Indicador de escritura animado
+  - Preguntas sugeridas contextuales
+  - Sidebar con categorías de ayuda y FAQs
+  - TrackBy para optimización de rendimiento
+
+- [x] **Sistema híbrido de ubicación**
+  - **Opción 1:** Geolocalización automática (navigator.geolocation)
+    - Ideal para móviles con GPS
+    - Manejo de errores (permisos denegados, timeout, etc.)
+  - **Opción 2:** Entrada manual de código postal
+    - Ideal para laptops/PCs (más preciso)
+    - Validación de 5 dígitos
+    - Integración con endpoint `/geocoding/codigo-postal`
+    - Feedback visual con spinner animado
+- [x] **Mapa interactivo**
+  - MapLibre GL integrado con MapTiler
+  - Marcador azul para ubicación del usuario
+  - Marcadores rojos numerados para productos
+  - Popups con imagen, precio, distancia y ubicación
+  - Ajuste automático de zoom (fitBounds)
+  - Controles de navegación
+  - Múltiples mapas en una conversación (caché de instancias)
+
+- [x] **UX/UI del chatbot**
+  - Diseño glassmorphism con backdrop blur
+  - Gradientes modernos (purple-blue)
+  - Animaciones de hover y estados
+  - Toast de errores y confirmaciones
+  - Mensajes de bienvenida personalizados
+  - Botón de limpiar conversación
+  - Contador de mensajes en tiempo real
+
 ### 📋 Fase 3: Sistema de Órdenes (PRÓXIMO)
 
 - [ ] Carrito de compras
@@ -1257,7 +1329,10 @@ Restablece la contraseña del usuario
 
 ```typescript
 {
-  success: true,
+  success:
+
+- `401 Unauthorized` - Código inválido o expirado
+true,
   message: "¡Contraseña restablecida exitosamente!"
 }
 ```
@@ -1270,6 +1345,94 @@ Restablece la contraseña del usuario
 
 ```
 
+```
+
+## API Endpoints - Chatbot
+
+### **GET `/chatbot/greeting`** 🌐
+
+Obtiene un saludo de bienvenida personalizado generado por Gemini AI
+
+**Response (200):**
+
+```typescript
+{
+  success: true,
+  message: "¡Hola! Soy tu asistente...",
+  timestamp: Date
+}
+```
+
+---
+
+### **POST `/chatbot/message`** 🌐
+
+Envía un mensaje al chatbot y obtiene respuesta inteligente
+
+**Request Body:**
+
+```typescript
+{
+  message: string;
+}
+```
+
+**Response (200):**
+
+```typescript
+{
+  success: true,
+  type: "text" | "map_request" | "map_response",
+  message: string,
+  timestamp: Date
+}
+```
+
+**Tipos de respuesta:**
+
+- `text`: Respuesta normal del chatbot
+- `map_request`: Solicita ubicación del usuario para búsqueda
+- `map_response`: (No usado en este endpoint)
+
+---
+
+### **GET `/products/nearby?lat=19.43&lng=-99.13&radius=50`** 🌐
+
+Buscar productos cercanos a una ubicación usando fórmula Haversine
+
+**Query Parameters:**
+
+- `lat` (required): Latitud del usuario
+- `lng` (required): Longitud del usuario
+- `radius` (optional): Radio de búsqueda en km (default: 5, max: 50)
+
+**Response (200):**
+
+```typescript
+{
+  success: true,
+  message: "Productos encontrados en 50km",
+  count: number,
+  userLocation: { lat: number, lng: number },
+  radius: number,
+  products: Product[] // Con propiedad adicional 'distance' en km
+}
+```
+
+---
+
+### **GET `/geocoding/map-config`** 🌐
+
+Obtiene la configuración del mapa (API Key de MapTiler)
+
+**Response (200):**
+
+```typescript
+{
+  success: true,
+  apiKey: string,
+  styleUrl: string
+}
 ```
 
 ---
@@ -1977,3 +2140,19 @@ Geocodificación inversa (coordenadas → dirección)
 9. Ropa Tradicional
 10. Decoración Mexicana
 11. Otros Productos
+
+### Endpoints por Categoría
+
+- **Públicos:** 8 (register, login, google, productos, categorías, geocodificación, nearby, map-config)
+- **Protegidos (Usuarios):** 13 (requieren JwtAuthGuard)
+- **Protegidos (Vendedores):** 9 (requieren SellerGuard)
+- **Protegidos (Admins):** 8 (requieren AdminJwtGuard)
+- **Super Admin:** 3 (requieren SuperAdminGuard)
+- **Chatbot:** 4 (greeting, message, search, products-nearby)
+
+### Frontend
+
+- **Componentes:** 10 (...existentes + **Chatbot**)
+- **Servicios:** 6 (...existentes + **ChatbotService**, **MapService**)
+- **Guards:** 2 (authGuard usuario, adminGuard)
+- **Páginas:** 8 (...existentes + **/chatbot**)

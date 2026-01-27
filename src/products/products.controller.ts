@@ -75,12 +75,16 @@ export class ProductsController {
   async findAll(@Query() filters: GetProductsDto) {
     const { products, total } = await this.productsService.findAll(filters);
 
+    //  Convertir a números
+    const page = Number(filters.page) || 1;
+    const limit = Number(filters.limit) || 12;
+
     return {
       success: true,
       count: products.length,
       total,
-      page: filters.page || 1,
-      limit: filters.limit || 12,
+      page, // ← ahora es número
+      limit, // ← ahora es número
       products,
     };
   }
