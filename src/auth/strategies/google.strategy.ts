@@ -10,7 +10,8 @@ import { ConfigService } from '@nestjs/config';
  * Maneja el flujo de autenticación con Google:
  * 1. Usuario hace click en "Continuar con Google"
  * 2. Redirige a Google para autenticación
- * 3. Usuario autoriza la app
+ * 3. Usuario autoriza l
+ * a app
  * 4. Google redirige a callback con código
  * 5. Esta estrategia valida el código y extrae datos del usuario
  */

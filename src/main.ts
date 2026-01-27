@@ -4,6 +4,7 @@ import { ValidationPipe } from '@nestjs/common';
 import { AppModule } from './app.module';
 import cookieParser from 'cookie-parser';
 import helmet from 'helmet';
+import { NestExpressApplication } from '@nestjs/platform-express';
 
 async function bootstrap() {
   // ✅ PRIMERO definir allowedOrigins
@@ -13,7 +14,8 @@ async function bootstrap() {
     'https://raicesmx.pages.dev', // FRONT PÚBLICO
   ];
 
-  const app = await NestFactory.create(AppModule);
+  const app = await NestFactory.create<NestExpressApplication>(AppModule);
+  app.set('trust proxy', 1); // 🔥 IMPORTANTE EN RENDER
 
   app.enableCors({
     origin: (origin, callback) => {
