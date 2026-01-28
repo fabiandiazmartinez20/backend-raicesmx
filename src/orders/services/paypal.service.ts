@@ -1,4 +1,3 @@
-// src/orders/services/paypal.service.ts - VERSIÓN CORREGIDA
 import {
   Injectable,
   Logger,
@@ -10,38 +9,63 @@ import axios from 'axios';
 @Injectable()
 export class PaypalService {
   private readonly logger = new Logger(PaypalService.name);
+
   private readonly clientId: string;
   private readonly clientSecret: string;
   private readonly apiUrl: string;
+  private readonly paypalFrontendUrl: string;
 
-  constructor(private configService: ConfigService) {
-    // ✅ CORRECCIÓN: Validar que las variables existan
+  constructor(private readonly configService: ConfigService) {
+    // =============================
+    // PAYPAL CREDENTIALS
+    // =============================
     const clientId = this.configService.get<string>('PAYPAL_CLIENT_ID');
+
     const clientSecret = this.configService.get<string>('PAYPAL_CLIENT_SECRET');
 
     if (!clientId || !clientSecret) {
       throw new Error(
-        '❌ PAYPAL_CLIENT_ID y PAYPAL_CLIENT_SECRET deben estar configurados en .env',
+        '❌ PAYPAL_CLIENT_ID o PAYPAL_CLIENT_SECRET no configurados',
       );
     }
 
-    this.clientId = clientId;
-    this.clientSecret = clientSecret;
+    this.clientId = clientId.trim();
+    this.clientSecret = clientSecret.trim();
 
-    // Usar sandbox o production según entorno
-    const mode = this.configService.get<string>('PAYPAL_MODE') || 'sandbox';
+    // =============================
+    // PAYPAL MODE
+    // =============================
+    const mode =
+      this.configService.get<string>('PAYPAL_MODE')?.trim() || 'sandbox';
+
     this.apiUrl =
       mode === 'sandbox'
         ? 'https://api-m.sandbox.paypal.com'
         : 'https://api-m.paypal.com';
 
-    this.logger.log(`🔧 PayPal configurado en modo: ${mode}`);
+    // =============================
+    // PAYPAL FRONTEND URL
+    // =============================
+    const paypalUrl = this.configService.get<string>('PAYPAL_FRONTEND_URL');
+
+    if (!paypalUrl) {
+      throw new Error('❌ PAYPAL_FRONTEND_URL no está configurado en Render');
+    }
+
+    // Quita espacios, enters y "/" final
+    this.paypalFrontendUrl = paypalUrl.trim().replace(/\/$/, '');
+
+    // =============================
+    // LOGS
+    // =============================
+    this.logger.log(`🔧 PayPal Mode: ${mode}`);
     this.logger.log(`🔑 Client ID: ${this.clientId.substring(0, 10)}...`);
+    this.logger.log(`🌐 PayPal Frontend: ${this.paypalFrontendUrl}`);
   }
 
-  /**
-   * Obtener access token de PayPal
-   */
+  // =====================================================
+  // GET ACCESS TOKEN
+  // =====================================================
   private async getAccessToken(): Promise<string> {
     try {
       const auth = Buffer.from(
@@ -59,20 +83,22 @@ export class PaypalService {
         },
       );
 
-      this.logger.log('✅ Token de PayPal obtenido');
+      this.logger.log('✅ Token PayPal obtenido');
+
       return response.data.access_token;
     } catch (error: any) {
       this.logger.error(
-        '❌ Error al obtener token de PayPal:',
+        '❌ Error obteniendo token PayPal',
         error.response?.data || error.message,
       );
+
       throw new InternalServerErrorException('Error al conectar con PayPal');
     }
   }
 
-  /**
-   * Crear orden de PayPal
-   */
+  // =====================================================
+  // CREATE ORDER
+  // =====================================================
   async createOrder(
     amount: number,
     currency: string = 'MXN',
@@ -83,24 +109,30 @@ export class PaypalService {
 
       const orderData = {
         intent: 'CAPTURE',
+
         purchase_units: [
           {
             reference_id: orderId,
+
             amount: {
               currency_code: currency,
               value: amount.toFixed(2),
             },
+
             description: `Orden RaícesMX #${orderId}`,
           },
         ],
+
         application_context: {
           brand_name: 'RaícesMX',
           locale: 'es-MX',
           landing_page: 'BILLING',
           shipping_preference: 'NO_SHIPPING',
           user_action: 'PAY_NOW',
-          return_url: `${this.configService.get('FRONTEND_URL')}/orden/confirmacion`,
-          cancel_url: `${this.configService.get('FRONTEND_URL')}/carrito`,
+
+          // ✅ AQUÍ YA USA PAYPAL_FRONTEND_URL
+          return_url: `${this.paypalFrontendUrl}/orden/confirmacion`,
+          cancel_url: `${this.paypalFrontendUrl}/carrito`,
         },
       };
 
@@ -116,19 +148,21 @@ export class PaypalService {
       );
 
       this.logger.log(`✅ Orden PayPal creada: ${response.data.id}`);
+
       return response.data;
     } catch (error: any) {
       this.logger.error(
-        '❌ Error al crear orden PayPal:',
+        '❌ Error creando orden PayPal',
         error.response?.data || error.message,
       );
+
       throw new InternalServerErrorException('Error al crear orden de pago');
     }
   }
 
-  /**
-   * Capturar pago de PayPal
-   */
+  // =====================================================
+  // CAPTURE PAYMENT
+  // =====================================================
   async captureOrder(paypalOrderId: string): Promise<any> {
     try {
       const accessToken = await this.getAccessToken();
@@ -145,19 +179,21 @@ export class PaypalService {
       );
 
       this.logger.log(`✅ Pago capturado: ${paypalOrderId}`);
+
       return response.data;
     } catch (error: any) {
       this.logger.error(
-        '❌ Error al capturar pago:',
+        '❌ Error capturando pago',
         error.response?.data || error.message,
       );
+
       throw new InternalServerErrorException('Error al procesar el pago');
     }
   }
 
-  /**
-   * Obtener detalles de orden
-   */
+  // =====================================================
+  // GET ORDER DETAILS
+  // =====================================================
   async getOrderDetails(paypalOrderId: string): Promise<any> {
     try {
       const accessToken = await this.getAccessToken();
@@ -175,21 +211,23 @@ export class PaypalService {
       return response.data;
     } catch (error: any) {
       this.logger.error(
-        '❌ Error al obtener detalles:',
+        '❌ Error obteniendo detalles',
         error.response?.data || error.message,
       );
+
       throw new InternalServerErrorException('Error al verificar pago');
     }
   }
 
-  /**
-   * Reembolsar orden
-   */
+  // =====================================================
+  // REFUND
+  // =====================================================
   async refundOrder(captureId: string, amount?: number): Promise<any> {
     try {
       const accessToken = await this.getAccessToken();
 
       const refundData: any = {};
+
       if (amount) {
         refundData.amount = {
           value: amount.toFixed(2),
@@ -208,13 +246,15 @@ export class PaypalService {
         },
       );
 
-      this.logger.log(`✅ Reembolso procesado: ${captureId}`);
+      this.logger.log(`✅ Reembolso: ${captureId}`);
+
       return response.data;
     } catch (error: any) {
       this.logger.error(
-        '❌ Error al procesar reembolso:',
+        '❌ Error en reembolso',
         error.response?.data || error.message,
       );
+
       throw new InternalServerErrorException('Error al procesar reembolso');
     }
   }
