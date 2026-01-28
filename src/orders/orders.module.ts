@@ -11,11 +11,12 @@ import { Payment } from './entities/payment.entity';
 import { Cart } from '../cart/entities/cart.entity';
 import { Product } from '../products/entities/product.entity';
 import { OrderEmailService } from './services/order-email.service';
+import { User } from '../users/entities/user.entity';
 
 @Module({
   imports: [
     ConfigModule,
-    TypeOrmModule.forFeature([Order, OrderItem, Payment, Cart, Product]),
+    TypeOrmModule.forFeature([Order, OrderItem, Payment, Cart, Product, User]),
   ],
   controllers: [OrdersController],
   providers: [OrdersService, PaypalService, OrderEmailService],

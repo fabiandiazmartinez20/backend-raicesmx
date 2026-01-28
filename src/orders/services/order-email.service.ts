@@ -359,7 +359,7 @@ export class OrderEmailService {
 <body>
   <div class="container">
     <div class="header">
-      <div class="success-icon">✅</div>
+      <div class="success-icon"></div>
       <h1>¡Compra Exitosa!</h1>
       <p>Gracias por tu compra en RaícesMX</p>
     </div>

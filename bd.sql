@@ -233,3 +233,144 @@ SHOW FULL TABLES;
 select * from categories;
 
 DESCRIBE users;
+
+
+
+-- =============================================
+-- TABLA: carts (Carritos de compras)
+-- =============================================
+CREATE TABLE IF NOT EXISTS `carts` (
+  `id` INT NOT NULL AUTO_INCREMENT,
+  `userId` INT NOT NULL,
+  `subtotal` DECIMAL(10, 2) DEFAULT 0.00,
+  `envio` DECIMAL(10, 2) DEFAULT 0.00,
+  `descuento` DECIMAL(10, 2) DEFAULT 0.00,
+  `total` DECIMAL(10, 2) DEFAULT 0.00,
+  `codigoCupon` VARCHAR(50) NULL,
+  `activo` TINYINT(1) DEFAULT 1,
+  `createdAt` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  `updatedAt` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `idx_user_active_cart` (`userId`, `activo`),
+  CONSTRAINT `fk_cart_user` FOREIGN KEY (`userId`) REFERENCES `users` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- =============================================
+-- TABLA: cart_items (Items del carrito)
+-- =============================================
+CREATE TABLE IF NOT EXISTS `cart_items` (
+  `id` INT NOT NULL AUTO_INCREMENT,
+  `cartId` INT NOT NULL,
+  `productId` INT NOT NULL,
+  `cantidad` INT DEFAULT 1,
+  `precioUnitario` DECIMAL(10, 2) NOT NULL,
+  `subtotal` DECIMAL(10, 2) NOT NULL,
+  `createdAt` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  `updatedAt` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `idx_cart_product` (`cartId`, `productId`),
+  CONSTRAINT `fk_cart_item_cart` FOREIGN KEY (`cartId`) REFERENCES `carts` (`id`) ON DELETE CASCADE,
+  CONSTRAINT `fk_cart_item_product` FOREIGN KEY (`productId`) REFERENCES `products` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- =============================================
+-- ÍNDICES para mejor rendimiento
+-- =============================================
+CREATE INDEX `idx_cart_user` ON `carts` (`userId`);
+CREATE INDEX `idx_cart_item_cart` ON `cart_items` (`cartId`);
+CREATE INDEX `idx_cart_item_product` ON `cart_items` (`productId`);
+
+-- =============================================
+-- Comentarios de las tablas
+-- =============================================
+ALTER TABLE `carts` COMMENT = 'Carritos de compras de los usuarios';
+ALTER TABLE `cart_items` COMMENT = 'Items individuales dentro de cada carrito';
+
+
+
+
+
+
+-- =====================================================
+-- TABLA: orders
+-- Órdenes de compra
+-- =====================================================
+
+CREATE TABLE orders (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  order_number VARCHAR(50) UNIQUE NOT NULL,
+  buyer_id INT NOT NULL,
+  subtotal DECIMAL(10,2) NOT NULL,
+  shipping_cost DECIMAL(10,2) DEFAULT 0,
+  discount DECIMAL(10,2) DEFAULT 0,
+  total DECIMAL(10,2) NOT NULL,
+  status ENUM('pending', 'paid', 'shipped', 'delivered', 'cancelled') DEFAULT 'pending',
+
+  -- Shipping Information
+  shipping_name VARCHAR(255) NOT NULL,
+  shipping_email VARCHAR(255) NOT NULL,
+  shipping_phone VARCHAR(20),
+  shipping_address TEXT NOT NULL,
+  shipping_city VARCHAR(100) NOT NULL,
+  shipping_state VARCHAR(100) NOT NULL,
+  shipping_postal_code VARCHAR(10) NOT NULL,
+  shipping_country VARCHAR(100) DEFAULT 'México',
+
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+
+  FOREIGN KEY (buyer_id) REFERENCES users(id) ON DELETE CASCADE,
+  INDEX idx_buyer (buyer_id),
+  INDEX idx_status (status),
+  INDEX idx_created (created_at)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- =====================================================
+-- TABLA: order_items
+-- Items de cada orden
+-- =====================================================
+
+CREATE TABLE order_items (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  order_id INT NOT NULL,
+  product_id INT NOT NULL,
+  product_title VARCHAR(255) NOT NULL,
+  product_description TEXT,
+  product_price DECIMAL(10,2) NOT NULL,
+  quantity INT NOT NULL,
+  total DECIMAL(10,2) NOT NULL,
+  product_image_url VARCHAR(500),
+  seller_id INT NOT NULL,
+  seller_name VARCHAR(255) NOT NULL,
+
+  FOREIGN KEY (order_id) REFERENCES orders(id) ON DELETE CASCADE,
+  INDEX idx_order (order_id),
+  INDEX idx_product (product_id),
+  INDEX idx_seller (seller_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- =====================================================
+-- TABLA: payments
+-- Pagos procesados
+-- =====================================================
+
+CREATE TABLE payments (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  order_id INT NOT NULL,
+  paypal_order_id VARCHAR(50) UNIQUE NOT NULL,
+  amount DECIMAL(10,2) NOT NULL,
+  currency VARCHAR(3) DEFAULT 'MXN',
+  status ENUM('pending', 'completed', 'failed', 'cancelled', 'refunded') DEFAULT 'pending',
+  method ENUM('paypal') DEFAULT 'paypal',
+  paypal_response JSON,
+  paypal_payer_id VARCHAR(50),
+  paypal_email VARCHAR(255),
+
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+
+  FOREIGN KEY (order_id) REFERENCES orders(id) ON DELETE CASCADE,
+  INDEX idx_order (order_id),
+  INDEX idx_paypal_order (paypal_order_id),
+  INDEX idx_status (status)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
